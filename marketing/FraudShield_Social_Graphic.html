@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1200, height=630">
+    <title>FraudShield Uganda - Social Media Graphic</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        
+        body {
+            width: 1200px;
+            height: 630px;
+            overflow: hidden;
+        }
+        
+        .container {
+            width: 1200px;
+            height: 630px;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+            position: relative;
+            display: flex;
+        }
+        
+        /* Decorative background elements */
+        .bg-glow {
+            position: absolute;
+            top: -100px;
+            right: -100px;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(16, 185, 129, 0.15) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+        
+        .bg-glow-2 {
+            position: absolute;
+            bottom: -150px;
+            left: 200px;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+        
+        /* Left side */
+        .left-panel {
+            width: 520px;
+            padding: 45px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .shield-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+        
+        .logo-text {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .logo-text h1 {
+            color: white;
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+        
+        .logo-text span {
+            color: #64748b;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 2px;
+        }
+        
+        .headline {
+            margin-top: 20px;
+        }
+        
+        .headline h2 {
+            color: white;
+            font-size: 42px;
+            font-weight: 800;
+            line-height: 1.1;
+            letter-spacing: -1px;
+        }
+        
+        .headline h2 .highlight {
+            color: #10b981;
+        }
+        
+        .subheadline {
+            margin-top: 16px;
+            color: #cbd5e1;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+        
+        .badge {
+            margin-top: 20px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            padding: 10px 20px;
+            border-radius: 25px;
+            color: white;
+            font-weight: 600;
+            font-size: 13px;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+        
+        .detection-types {
+            margin-top: 24px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        
+        .detection-type {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #94a3b8;
+            font-size: 13px;
+        }
+        
+        .detection-type span {
+            font-size: 14px;
+        }
+        
+        /* Right side */
+        .right-panel {
+            flex: 1;
+            padding: 45px 45px 45px 20px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .hybrid-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+        
+        .hybrid-badge {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+        
+        .hybrid-title {
+            color: white;
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+        
+        .layers-container {
+            display: flex;
+            gap: 15px;
+            align-items: stretch;
+        }
+        
+        .layers {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 320px;
+        }
+        
+        .layer {
+            padding: 16px;
+            border-radius: 12px;
+            position: relative;
+        }
+        
+        .layer-1 {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        }
+        
+        .layer-2 {
+            background: linear-gradient(135deg, #a855f7 0%, #9333ea 100%);
+        }
+        
+        .layer-label {
+            color: rgba(255,255,255,0.9);
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        
+        .layer-title {
+            color: white;
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        
+        .layer-features {
+            display: flex;
+            gap: 16px;
+            font-size: 10px;
+            color: rgba(255,255,255,0.8);
+        }
+        
+        .layer-features span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .arrow-connector {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0;
+        }
+        
+        .arrow-line {
+            width: 2px;
+            height: 40px;
+            background: #10b981;
+        }
+        
+        .arrow-horizontal {
+            width: 30px;
+            height: 2px;
+            background: #10b981;
+            position: relative;
+        }
+        
+        .arrow-horizontal::after {
+            content: '';
+            position: absolute;
+            right: -6px;
+            top: -4px;
+            border: 5px solid transparent;
+            border-left: 8px solid #10b981;
+        }
+        
+        .result-box {
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-width: 150px;
+            border: 1px solid #334155;
+        }
+        
+        .result-value {
+            color: #10b981;
+            font-size: 36px;
+            font-weight: 800;
+            line-height: 1;
+        }
+        
+        .result-label {
+            color: white;
+            font-size: 13px;
+            font-weight: 600;
+            margin-top: 8px;
+        }
+        
+        .result-note {
+            color: #64748b;
+            font-size: 9px;
+            margin-top: 6px;
+        }
+        
+        /* Stats row */
+        .stats-row {
+            display: flex;
+            gap: 12px;
+            margin-top: auto;
+        }
+        
+        .stat-box {
+            background: #1e293b;
+            border-radius: 10px;
+            padding: 14px;
+            text-align: center;
+            flex: 1;
+            border: 1px solid #334155;
+        }
+        
+        .stat-value {
+            font-size: 20px;
+            font-weight: 800;
+        }
+        
+        .stat-value.red { color: #ef4444; }
+        .stat-value.blue { color: #3b82f6; }
+        .stat-value.amber { color: #f59e0b; }
+        .stat-value.green { color: #10b981; }
+        
+        .stat-label {
+            color: #64748b;
+            font-size: 10px;
+            margin-top: 4px;
+        }
+        
+        /* Bottom bar */
+        .bottom-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: #1e293b;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 45px;
+            border-top: 1px solid #334155;
+        }
+        
+        .cta {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        
+        .cta-main {
+            color: white;
+            font-size: 15px;
+            font-weight: 700;
+        }
+        
+        .cta-sub {
+            color: #64748b;
+            font-size: 13px;
+        }
+        
+        .contact {
+            text-align: right;
+        }
+        
+        .contact-email {
+            color: #10b981;
+            font-size: 14px;
+            font-weight: 700;
+        }
+        
+        .contact-location {
+            color: #64748b;
+            font-size: 11px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="bg-glow"></div>
+        <div class="bg-glow-2"></div>
+        
+        <!-- Left Panel -->
+        <div class="left-panel">
+            <div>
+                <div class="logo-area">
+                    <div class="shield-icon">🛡️</div>
+                    <div class="logo-text">
+                        <h1>FraudShield</h1>
+                        <span>UGANDA</span>
+                    </div>
+                </div>
+                
+                <div class="headline">
+                    <h2>Stop Fraud Before<br>It Costs You <span class="highlight">Millions</span></h2>
+                </div>
+                
+                <p class="subheadline">
+                    Hybrid Detection Technology for<br>
+                    Microfinance Institutions & SACCOs
+                </p>
+                
+                <div class="badge">
+                    ✓ Works From Day One
+                </div>
+                
+                <div class="detection-types">
+                    <div class="detection-type"><span>🔍</span> Ghost Loans</div>
+                    <div class="detection-type"><span>🔗</span> Collusion Rings</div>
+                    <div class="detection-type"><span>👤</span> Officer Fraud</div>
+                    <div class="detection-type"><span>📊</span> Anomalies</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right Panel -->
+        <div class="right-panel">
+            <div class="hybrid-header">
+                <span class="hybrid-badge">⚡ HYBRID APPROACH</span>
+            </div>
+            <h3 class="hybrid-title">Two Layers of Protection</h3>
+            
+            <div class="layers-container">
+                <div class="layers">
+                    <div class="layer layer-1">
+                        <div class="layer-label">LAYER 1: RULE-BASED</div>
+                        <div class="layer-title">Statistical Pattern Recognition</div>
+                        <div class="layer-features">
+                            <span>✓ Works immediately</span>
+                            <span>✓ No training required</span>
+                        </div>
+                    </div>
+                    <div class="layer layer-2">
+                        <div class="layer-label">LAYER 2: MACHINE LEARNING</div>
+                        <div class="layer-title">Adaptive Pattern Learning</div>
+                        <div class="layer-features">
+                            <span>✓ Learns from your data</span>
+                            <span>✓ Improves over time</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="arrow-connector">
+                    <div class="arrow-line"></div>
+                    <div class="arrow-horizontal"></div>
+                    <div class="arrow-line"></div>
+                </div>
+                
+                <div class="result-box">
+                    <div class="result-value">94%+</div>
+                    <div class="result-label">Detection<br>Capability</div>
+                    <div class="result-note">*Improves with your data</div>
+                </div>
+            </div>
+            
+            <div class="stats-row">
+                <div class="stat-box">
+                    <div class="stat-value red">UGX 47M+</div>
+                    <div class="stat-label">Risk Detected</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value blue">2,847</div>
+                    <div class="stat-label">Loans Analyzed</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value amber">23</div>
+                    <div class="stat-label">Fraud Alerts</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value green">100%</div>
+                    <div class="stat-label">Local Data</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Bottom Bar -->
+        <div class="bottom-bar">
+            <div class="cta">
+                <span class="cta-main">Free 90-Day Assessment</span>
+                <span class="cta-sub">• No upfront cost • Prove value first</span>
+            </div>
+            <div class="contact">
+                <div class="contact-email">sseguya256@gmail.com</div>
+                <div class="contact-location">Kampala, Uganda</div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
