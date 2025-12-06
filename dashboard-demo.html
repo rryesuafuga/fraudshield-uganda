@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FraudShield Uganda | Interactive Dashboard Demo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        .gradient-bg { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); }
+        .card { background: rgba(30, 41, 59, 0.8); backdrop-filter: blur(10px); border: 1px solid rgba(71, 85, 105, 0.5); }
+        .glow-green { box-shadow: 0 0 20px rgba(16, 185, 129, 0.3); }
+        .glow-red { box-shadow: 0 0 20px rgba(239, 68, 68, 0.3); }
+        .pulse { animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .network-link { stroke: #475569; stroke-opacity: 0.6; }
+        .network-link.suspicious { stroke: #ef4444; stroke-opacity: 0.8; stroke-width: 2; }
+        .network-node { cursor: pointer; transition: all 0.3s; }
+        .network-node:hover { filter: brightness(1.2); }
+        .tooltip { position: absolute; background: #1e293b; border: 1px solid #475569; border-radius: 8px; padding: 12px; pointer-events: none; opacity: 0; transition: opacity 0.2s; z-index: 1000; max-width: 280px; }
+        .gauge-track { fill: none; stroke: #334155; }
+        .gauge-fill { fill: none; stroke-linecap: round; }
+        .detection-badge { display: inline-flex; align-items: center; padding: 4px 12px; border-radius: 9999px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        .badge-rule { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
+        .badge-ml { background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
+        .tab-btn { transition: all 0.3s; }
+        .tab-btn.active { background: rgba(16, 185, 129, 0.2); border-color: #10b981; color: #10b981; }
+        .alert-card { transition: all 0.3s; cursor: pointer; }
+        .alert-card:hover { transform: translateX(4px); background: rgba(51, 65, 85, 0.5); }
+        .timeline-dot { transition: all 0.3s; }
+        .timeline-dot:hover { transform: scale(1.5); }
+        .stat-number { font-variant-numeric: tabular-nums; }
+        .scroll-container { scrollbar-width: thin; scrollbar-color: #475569 transparent; }
+        .scroll-container::-webkit-scrollbar { width: 6px; }
+        .scroll-container::-webkit-scrollbar-track { background: transparent; }
+        .scroll-container::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen text-white">
+    <!-- Tooltip -->
+    <div id="tooltip" class="tooltip"></div>
+
+    <!-- Header -->
+    <header class="border-b border-slate-700/50 bg-slate-900/80 backdrop-blur-sm sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-3">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg flex items-center justify-center">
+                        <i data-lucide="shield-check" class="h-6 w-6 text-white"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-lg font-bold">FraudShield Dashboard</h1>
+                        <p class="text-xs text-slate-400">Hybrid Detection Platform</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="text-right">
+                        <p class="text-sm font-semibold">Sunrise SACCO Ltd</p>
+                        <p class="text-xs text-slate-400">Demo Data • Jan - Dec 2025</p>
+                    </div>
+                    <div class="flex items-center space-x-2 px-3 py-1.5 bg-emerald-500/20 rounded-full border border-emerald-500/30">
+                        <span class="w-2 h-2 bg-emerald-400 rounded-full pulse"></span>
+                        <span class="text-xs text-emerald-400 font-medium">Live Analysis</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Demo Banner -->
+    <div class="bg-gradient-to-r from-purple-600/20 to-blue-600/20 border-b border-purple-500/30 px-4 py-2">
+        <div class="max-w-7xl mx-auto flex items-center justify-center space-x-2 text-sm">
+            <i data-lucide="sparkles" class="h-4 w-4 text-purple-400"></i>
+            <span class="text-purple-300"><strong>Interactive Demo</strong> — Simulated data showcasing hybrid rule-based + machine learning detection</span>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 py-6">
+        <!-- Stats Row -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="card rounded-xl p-4">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-slate-400 text-sm">Total Loans Analyzed</span>
+                    <i data-lucide="file-text" class="h-5 w-5 text-slate-500"></i>
+                </div>
+                <p class="text-3xl font-bold stat-number" id="stat-loans">0</p>
+                <p class="text-xs text-slate-500 mt-1">Last 12 months</p>
+            </div>
+            <div class="card rounded-xl p-4">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-slate-400 text-sm">Fraud Alerts</span>
+                    <i data-lucide="alert-triangle" class="h-5 w-5 text-red-400"></i>
+                </div>
+                <p class="text-3xl font-bold text-red-400 stat-number" id="stat-alerts">0</p>
+                <div class="flex items-center space-x-2 mt-1">
+                    <span class="detection-badge badge-rule">Rule: <span id="stat-rule">0</span></span>
+                    <span class="detection-badge badge-ml">ML: <span id="stat-ml">0</span></span>
+                </div>
+            </div>
+            <div class="card rounded-xl p-4">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-slate-400 text-sm">Amount at Risk</span>
+                    <i data-lucide="trending-up" class="h-5 w-5 text-amber-400"></i>
+                </div>
+                <p class="text-3xl font-bold text-amber-400 stat-number">UGX <span id="stat-risk">0</span>M</p>
+                <p class="text-xs text-slate-500 mt-1">Flagged transactions</p>
+            </div>
+            <div class="card rounded-xl p-4">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-slate-400 text-sm">Detection Rate</span>
+                    <i data-lucide="target" class="h-5 w-5 text-emerald-400"></i>
+                </div>
+                <p class="text-3xl font-bold text-emerald-400 stat-number"><span id="stat-detection">0</span>%</p>
+                <p class="text-xs text-emerald-500 mt-1">↑ 12% with ML layer</p>
+            </div>
+        </div>
+
+        <!-- Main Grid -->
+        <div class="grid lg:grid-cols-3 gap-6">
+            <!-- Left Column: Network Graph & Timeline -->
+            <div class="lg:col-span-2 space-y-6">
+                <!-- Network Visualization -->
+                <div class="card rounded-xl overflow-hidden">
+                    <div class="px-4 py-3 border-b border-slate-700/50 flex items-center justify-between">
+                        <div>
+                            <h3 class="font-semibold">Collusion Network Analysis</h3>
+                            <p class="text-xs text-slate-400">Relationship graph showing connected borrowers & officers</p>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="detection-badge badge-rule">Network Analysis</span>
+                            <button onclick="resetNetwork()" class="p-1.5 hover:bg-slate-700 rounded-lg transition">
+                                <i data-lucide="refresh-cw" class="h-4 w-4 text-slate-400"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="network-chart" class="h-80 relative"></div>
+                    <div class="px-4 py-2 bg-slate-800/50 flex items-center justify-between text-xs">
+                        <div class="flex items-center space-x-4">
+                            <span class="flex items-center"><span class="w-3 h-3 rounded-full bg-emerald-500 mr-1"></span> Normal</span>
+                            <span class="flex items-center"><span class="w-3 h-3 rounded-full bg-amber-500 mr-1"></span> Suspicious</span>
+                            <span class="flex items-center"><span class="w-3 h-3 rounded-full bg-red-500 mr-1"></span> High Risk</span>
+                            <span class="flex items-center"><span class="w-3 h-3 rounded-full bg-blue-500 mr-1"></span> Officer</span>
+                        </div>
+                        <span class="text-slate-500">Click nodes for details</span>
+                    </div>
+                </div>
+
+                <!-- Risk Score Distribution -->
+                <div class="card rounded-xl overflow-hidden">
+                    <div class="px-4 py-3 border-b border-slate-700/50 flex items-center justify-between">
+                        <div>
+                            <h3 class="font-semibold">Risk Score Distribution</h3>
+                            <p class="text-xs text-slate-400">ML-powered risk scoring across all loans</p>
+                        </div>
+                        <span class="detection-badge badge-ml">Machine Learning</span>
+                    </div>
+                    <div id="risk-distribution" class="h-48 px-4 py-2"></div>
+                </div>
+
+                <!-- Detection Timeline -->
+                <div class="card rounded-xl overflow-hidden">
+                    <div class="px-4 py-3 border-b border-slate-700/50">
+                        <h3 class="font-semibold">Detection Timeline</h3>
+                        <p class="text-xs text-slate-400">Fraud alerts over time by detection method</p>
+                    </div>
+                    <div id="timeline-chart" class="h-48 px-4 py-2"></div>
+                    <div class="px-4 py-2 bg-slate-800/50 flex items-center justify-center space-x-6 text-xs">
+                        <span class="flex items-center"><span class="w-3 h-3 rounded-full bg-blue-500 mr-1"></span> Rule-Based</span>
+                        <span class="flex items-center"><span class="w-3 h-3 rounded-full bg-purple-500 mr-1"></span> ML Detection</span>
+                        <span class="flex items-center"><span class="w-3 h-3 rounded-full bg-emerald-500 mr-1"></span> Combined</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Alerts & Officers -->
+            <div class="space-y-6">
+                <!-- Risk Gauges -->
+                <div class="card rounded-xl p-4">
+                    <h3 class="font-semibold mb-4">Overall Risk Assessment</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="text-center">
+                            <div id="gauge-portfolio" class="mx-auto"></div>
+                            <p class="text-xs text-slate-400 mt-2">Portfolio Risk</p>
+                        </div>
+                        <div class="text-center">
+                            <div id="gauge-officer" class="mx-auto"></div>
+                            <p class="text-xs text-slate-400 mt-2">Officer Risk</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Alerts -->
+                <div class="card rounded-xl overflow-hidden">
+                    <div class="px-4 py-3 border-b border-slate-700/50 flex items-center justify-between">
+                        <h3 class="font-semibold">Recent Alerts</h3>
+                        <span class="text-xs text-slate-400">Last 7 days</span>
+                    </div>
+                    <div id="alerts-list" class="max-h-72 overflow-y-auto scroll-container">
+                        <!-- Alerts populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Officer Ranking -->
+                <div class="card rounded-xl overflow-hidden">
+                    <div class="px-4 py-3 border-b border-slate-700/50 flex items-center justify-between">
+                        <h3 class="font-semibold">Officer Risk Ranking</h3>
+                        <span class="detection-badge badge-ml">ML Scored</span>
+                    </div>
+                    <div id="officer-ranking" class="p-4 space-y-3">
+                        <!-- Officers populated by JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alert Details Modal (hidden by default) -->
+        <div id="alert-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden items-center justify-center">
+            <div class="card rounded-2xl max-w-lg w-full mx-4 overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-700/50 flex items-center justify-between">
+                    <h3 class="font-semibold text-lg" id="modal-title">Alert Details</h3>
+                    <button onclick="closeModal()" class="p-1 hover:bg-slate-700 rounded-lg">
+                        <i data-lucide="x" class="h-5 w-5"></i>
+                    </button>
+                </div>
+                <div class="p-6" id="modal-content">
+                    <!-- Content injected by JS -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-700/50 mt-8 py-4">
+        <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-500">
+            <p>FraudShield Uganda Demo Dashboard • Simulated Data</p>
+            <p class="mt-1">Hybrid Detection: Rule-Based Anomaly Detection + Machine Learning</p>
+        </div>
+    </footer>
+
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // ============================================
+        // SAMPLE DATA GENERATION
+        // ============================================
+        const officers = [
+            { id: 'OFF001', name: 'K. Mutesa', branch: 'Kampala Central', riskScore: 78, flagRate: 12.3 },
+            { id: 'OFF002', name: 'J. Nakato', branch: 'Entebbe', riskScore: 45, flagRate: 4.2 },
+            { id: 'OFF003', name: 'P. Okello', branch: 'Jinja', riskScore: 23, flagRate: 1.8 },
+            { id: 'OFF004', name: 'S. Nambi', branch: 'Kampala Central', riskScore: 67, flagRate: 8.9 },
+            { id: 'OFF005', name: 'D. Wasswa', branch: 'Mbarara', riskScore: 31, flagRate: 2.4 },
+            { id: 'OFF006', name: 'R. Kizza', branch: 'Gulu', riskScore: 52, flagRate: 5.7 }
+        ];
+
+        const alerts = [
+            { id: 1, type: 'collusion', severity: 'high', title: 'Collusion Ring Detected', description: '8 loans within 300m radius linked to Officer K. Mutesa', amount: 18400000, detection: 'rule', time: '2 hours ago', officer: 'K. Mutesa' },
+            { id: 2, type: 'ghost', severity: 'high', title: 'Potential Ghost Loans', description: '3 borrowers with identical phone patterns detected', amount: 7200000, detection: 'ml', time: '5 hours ago', officer: 'S. Nambi' },
+            { id: 3, type: 'approval', severity: 'medium', title: 'Unusual Approval Pattern', description: 'Officer approval rate 97% vs 72% branch average', amount: 4500000, detection: 'rule', time: '1 day ago', officer: 'K. Mutesa' },
+            { id: 4, type: 'stacking', severity: 'medium', title: 'Loan Stacking Detected', description: 'Borrower B-4521 has 4 active loans across branches', amount: 3200000, detection: 'ml', time: '1 day ago', officer: 'J. Nakato' },
+            { id: 5, type: 'timing', severity: 'low', title: 'After-Hours Transaction', description: '12 loans processed between 10PM-6AM', amount: 2100000, detection: 'rule', time: '2 days ago', officer: 'D. Wasswa' },
+            { id: 6, type: 'payment', severity: 'medium', title: 'Payment Anomaly', description: 'Repayment recorded but not in bank statement', amount: 1800000, detection: 'ml', time: '3 days ago', officer: 'R. Kizza' }
+        ];
+
+        // Network data for collusion visualization
+        const networkNodes = [
+            { id: 'OFF001', name: 'K. Mutesa', type: 'officer', risk: 'high' },
+            { id: 'B001', name: 'Borrower A', type: 'borrower', risk: 'high' },
+            { id: 'B002', name: 'Borrower B', type: 'borrower', risk: 'high' },
+            { id: 'B003', name: 'Borrower C', type: 'borrower', risk: 'medium' },
+            { id: 'B004', name: 'Borrower D', type: 'borrower', risk: 'high' },
+            { id: 'B005', name: 'Borrower E', type: 'borrower', risk: 'medium' },
+            { id: 'OFF002', name: 'J. Nakato', type: 'officer', risk: 'low' },
+            { id: 'B006', name: 'Borrower F', type: 'borrower', risk: 'low' },
+            { id: 'B007', name: 'Borrower G', type: 'borrower', risk: 'low' },
+            { id: 'B008', name: 'Borrower H', type: 'borrower', risk: 'low' },
+            { id: 'OFF003', name: 'P. Okello', type: 'officer', risk: 'low' },
+            { id: 'B009', name: 'Borrower I', type: 'borrower', risk: 'low' },
+            { id: 'B010', name: 'Borrower J', type: 'borrower', risk: 'low' },
+            { id: 'G001', name: 'Guarantor X', type: 'guarantor', risk: 'high' }
+        ];
+
+        const networkLinks = [
+            { source: 'OFF001', target: 'B001', type: 'approved', suspicious: true },
+            { source: 'OFF001', target: 'B002', type: 'approved', suspicious: true },
+            { source: 'OFF001', target: 'B003', type: 'approved', suspicious: true },
+            { source: 'OFF001', target: 'B004', type: 'approved', suspicious: true },
+            { source: 'OFF001', target: 'B005', type: 'approved', suspicious: false },
+            { source: 'B001', target: 'B002', type: 'shared_phone', suspicious: true },
+            { source: 'B002', target: 'B003', type: 'shared_address', suspicious: true },
+            { source: 'B003', target: 'B004', type: 'shared_guarantor', suspicious: true },
+            { source: 'B001', target: 'G001', type: 'guarantor', suspicious: true },
+            { source: 'B002', target: 'G001', type: 'guarantor', suspicious: true },
+            { source: 'B004', target: 'G001', type: 'guarantor', suspicious: true },
+            { source: 'OFF002', target: 'B006', type: 'approved', suspicious: false },
+            { source: 'OFF002', target: 'B007', type: 'approved', suspicious: false },
+            { source: 'OFF002', target: 'B008', type: 'approved', suspicious: false },
+            { source: 'OFF003', target: 'B009', type: 'approved', suspicious: false },
+            { source: 'OFF003', target: 'B010', type: 'approved', suspicious: false }
+        ];
+
+        // Timeline data
+        const timelineData = [
+            { month: 'Jan', rule: 2, ml: 1, combined: 0 },
+            { month: 'Feb', rule: 3, ml: 2, combined: 1 },
+            { month: 'Mar', rule: 4, ml: 3, combined: 2 },
+            { month: 'Apr', rule: 3, ml: 4, combined: 2 },
+            { month: 'May', rule: 5, ml: 4, combined: 3 },
+            { month: 'Jun', rule: 4, ml: 5, combined: 2 },
+            { month: 'Jul', rule: 6, ml: 6, combined: 4 },
+            { month: 'Aug', rule: 5, ml: 7, combined: 3 },
+            { month: 'Sep', rule: 7, ml: 8, combined: 5 },
+            { month: 'Oct', rule: 6, ml: 9, combined: 4 },
+            { month: 'Nov', rule: 8, ml: 10, combined: 6 },
+            { month: 'Dec', rule: 7, ml: 11, combined: 5 }
+        ];
+
+        // Risk distribution data
+        const riskDistribution = [
+            { range: '0-10', count: 1250, label: 'Very Low' },
+            { range: '11-25', count: 890, label: 'Low' },
+            { range: '26-50', count: 420, label: 'Medium' },
+            { range: '51-75', count: 180, label: 'High' },
+            { range: '76-100', count: 47, label: 'Critical' }
+        ];
+
+        // ============================================
+        // ANIMATIONS - GSAP
+        // ============================================
+        function animateStats() {
+            // Animate stat numbers
+            gsap.to({}, {
+                duration: 2,
+                onUpdate: function() {
+                    const progress = this.progress();
+                    document.getElementById('stat-loans').textContent = Math.floor(2847 * progress).toLocaleString();
+                    document.getElementById('stat-alerts').textContent = Math.floor(23 * progress);
+                    document.getElementById('stat-rule').textContent = Math.floor(14 * progress);
+                    document.getElementById('stat-ml').textContent = Math.floor(9 * progress);
+                    document.getElementById('stat-risk').textContent = (47.2 * progress).toFixed(1);
+                    document.getElementById('stat-detection').textContent = Math.floor(94 * progress);
+                }
+            });
+
+            // Animate cards
+            gsap.from('.card', {
+                opacity: 0,
+                y: 20,
+                duration: 0.6,
+                stagger: 0.1,
+                ease: 'power2.out'
+            });
+        }
+
+        // ============================================
+        // NETWORK GRAPH - D3.js
+        // ============================================
+        function createNetworkGraph() {
+            const container = document.getElementById('network-chart');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            // Clear existing
+            d3.select('#network-chart').selectAll('*').remove();
+
+            const svg = d3.select('#network-chart')
+                .append('svg')
+                .attr('width', width)
+                .attr('height', height);
+
+            // Color scale
+            const colorScale = {
+                'high': '#ef4444',
+                'medium': '#f59e0b',
+                'low': '#10b981'
+            };
+
+            const typeRadius = {
+                'officer': 20,
+                'borrower': 12,
+                'guarantor': 15
+            };
+
+            // Create simulation
+            const simulation = d3.forceSimulation(networkNodes)
+                .force('link', d3.forceLink(networkLinks).id(d => d.id).distance(80))
+                .force('charge', d3.forceManyBody().strength(-200))
+                .force('center', d3.forceCenter(width / 2, height / 2))
+                .force('collision', d3.forceCollide().radius(30));
+
+            // Draw links
+            const link = svg.append('g')
+                .selectAll('line')
+                .data(networkLinks)
+                .join('line')
+                .attr('class', d => `network-link ${d.suspicious ? 'suspicious' : ''}`)
+                .attr('stroke-dasharray', d => d.type === 'shared_phone' ? '5,5' : 'none');
+
+            // Draw nodes
+            const node = svg.append('g')
+                .selectAll('g')
+                .data(networkNodes)
+                .join('g')
+                .attr('class', 'network-node')
+                .call(d3.drag()
+                    .on('start', dragstarted)
+                    .on('drag', dragged)
+                    .on('end', dragended));
+
+            // Node circles
+            node.append('circle')
+                .attr('r', d => typeRadius[d.type])
+                .attr('fill', d => d.type === 'officer' ? '#3b82f6' : colorScale[d.risk])
+                .attr('stroke', '#fff')
+                .attr('stroke-width', 2);
+
+            // Node icons (for officers)
+            node.filter(d => d.type === 'officer')
+                .append('text')
+                .attr('text-anchor', 'middle')
+                .attr('dy', 4)
+                .attr('fill', '#fff')
+                .attr('font-size', '12px')
+                .text('👤');
+
+            // Labels
+            node.append('text')
+                .attr('dy', d => typeRadius[d.type] + 14)
+                .attr('text-anchor', 'middle')
+                .attr('fill', '#94a3b8')
+                .attr('font-size', '10px')
+                .text(d => d.name);
+
+            // Tooltip interactions
+            node.on('mouseover', function(event, d) {
+                const tooltip = document.getElementById('tooltip');
+                tooltip.innerHTML = `
+                    <div class="font-semibold text-white mb-1">${d.name}</div>
+                    <div class="text-xs text-slate-400">Type: ${d.type}</div>
+                    <div class="text-xs text-slate-400">Risk Level: <span class="text-${d.risk === 'high' ? 'red' : d.risk === 'medium' ? 'amber' : 'emerald'}-400">${d.risk.toUpperCase()}</span></div>
+                    ${d.type === 'officer' ? `<div class="text-xs text-slate-400 mt-1">Approved Loans: ${networkLinks.filter(l => l.source.id === d.id).length}</div>` : ''}
+                `;
+                tooltip.style.opacity = 1;
+                tooltip.style.left = (event.pageX + 10) + 'px';
+                tooltip.style.top = (event.pageY - 10) + 'px';
+            })
+            .on('mouseout', function() {
+                document.getElementById('tooltip').style.opacity = 0;
+            })
+            .on('click', function(event, d) {
+                showNodeDetails(d);
+            });
+
+            // Simulation tick
+            simulation.on('tick', () => {
+                link
+                    .attr('x1', d => d.source.x)
+                    .attr('y1', d => d.source.y)
+                    .attr('x2', d => d.target.x)
+                    .attr('y2', d => d.target.y);
+
+                node.attr('transform', d => `translate(${d.x},${d.y})`);
+            });
+
+            // Drag functions
+            function dragstarted(event) {
+                if (!event.active) simulation.alphaTarget(0.3).restart();
+                event.subject.fx = event.subject.x;
+                event.subject.fy = event.subject.y;
+            }
+
+            function dragged(event) {
+                event.subject.fx = event.x;
+                event.subject.fy = event.y;
+            }
+
+            function dragended(event) {
+                if (!event.active) simulation.alphaTarget(0);
+                event.subject.fx = null;
+                event.subject.fy = null;
+            }
+
+            // Animate network appearance
+            gsap.from(node.nodes(), {
+                opacity: 0,
+                scale: 0,
+                duration: 0.5,
+                stagger: 0.05,
+                ease: 'back.out(1.7)'
+            });
+        }
+
+        function resetNetwork() {
+            createNetworkGraph();
+        }
+
+        function showNodeDetails(node) {
+            const modal = document.getElementById('alert-modal');
+            const title = document.getElementById('modal-title');
+            const content = document.getElementById('modal-content');
+
+            title.textContent = node.name;
+            
+            if (node.type === 'officer') {
+                const officer = officers.find(o => o.name === node.name) || { riskScore: 50, flagRate: 5, branch: 'Unknown' };
+                content.innerHTML = `
+                    <div class="space-y-4">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-12 h-12 bg-blue-500/20 rounded-full flex items-center justify-center">
+                                <i data-lucide="user" class="h-6 w-6 text-blue-400"></i>
+                            </div>
+                            <div>
+                                <p class="font-semibold">${node.name}</p>
+                                <p class="text-sm text-slate-400">Loan Officer • ${officer.branch}</p>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="bg-slate-800/50 rounded-lg p-3">
+                                <p class="text-xs text-slate-400">Risk Score</p>
+                                <p class="text-2xl font-bold text-${officer.riskScore > 60 ? 'red' : officer.riskScore > 40 ? 'amber' : 'emerald'}-400">${officer.riskScore}</p>
+                            </div>
+                            <div class="bg-slate-800/50 rounded-lg p-3">
+                                <p class="text-xs text-slate-400">Flag Rate</p>
+                                <p class="text-2xl font-bold">${officer.flagRate}%</p>
+                            </div>
+                        </div>
+                        <div class="text-sm text-slate-300">
+                            <p class="font-medium mb-2">Connected Borrowers:</p>
+                            <p class="text-slate-400">${networkLinks.filter(l => l.source.id === node.id || l.source === node.id).length} direct connections</p>
+                            <p class="text-red-400">${networkLinks.filter(l => (l.source.id === node.id || l.source === node.id) && l.suspicious).length} flagged as suspicious</p>
+                        </div>
+                    </div>
+                `;
+            } else {
+                content.innerHTML = `
+                    <div class="space-y-4">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-12 h-12 bg-${node.risk === 'high' ? 'red' : node.risk === 'medium' ? 'amber' : 'emerald'}-500/20 rounded-full flex items-center justify-center">
+                                <i data-lucide="user" class="h-6 w-6 text-${node.risk === 'high' ? 'red' : node.risk === 'medium' ? 'amber' : 'emerald'}-400"></i>
+                            </div>
+                            <div>
+                                <p class="font-semibold">${node.name}</p>
+                                <p class="text-sm text-slate-400">${node.type.charAt(0).toUpperCase() + node.type.slice(1)}</p>
+                            </div>
+                        </div>
+                        <div class="bg-slate-800/50 rounded-lg p-3">
+                            <p class="text-xs text-slate-400 mb-1">Risk Assessment</p>
+                            <p class="font-semibold text-${node.risk === 'high' ? 'red' : node.risk === 'medium' ? 'amber' : 'emerald'}-400">${node.risk.toUpperCase()} RISK</p>
+                        </div>
+                        <div class="text-sm text-slate-300">
+                            <p class="font-medium mb-2">Connections:</p>
+                            <p class="text-slate-400">${networkLinks.filter(l => l.source.id === node.id || l.target.id === node.id || l.source === node.id || l.target === node.id).length} total connections</p>
+                        </div>
+                    </div>
+                `;
+            }
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            lucide.createIcons();
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('alert-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        // ============================================
+        // RISK DISTRIBUTION CHART - D3.js
+        // ============================================
+        function createRiskDistribution() {
+            const container = document.getElementById('risk-distribution');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            const margin = { top: 20, right: 20, bottom: 30, left: 50 };
+
+            d3.select('#risk-distribution').selectAll('*').remove();
+
+            const svg = d3.select('#risk-distribution')
+                .append('svg')
+                .attr('width', width)
+                .attr('height', height);
+
+            const x = d3.scaleBand()
+                .domain(riskDistribution.map(d => d.range))
+                .range([margin.left, width - margin.right])
+                .padding(0.3);
+
+            const y = d3.scaleLinear()
+                .domain([0, d3.max(riskDistribution, d => d.count)])
+                .nice()
+                .range([height - margin.bottom, margin.top]);
+
+            const colorScale = d3.scaleOrdinal()
+                .domain(['0-10', '11-25', '26-50', '51-75', '76-100'])
+                .range(['#10b981', '#22c55e', '#f59e0b', '#f97316', '#ef4444']);
+
+            // Bars
+            svg.selectAll('rect')
+                .data(riskDistribution)
+                .join('rect')
+                .attr('x', d => x(d.range))
+                .attr('width', x.bandwidth())
+                .attr('y', height - margin.bottom)
+                .attr('height', 0)
+                .attr('fill', d => colorScale(d.range))
+                .attr('rx', 4)
+                .transition()
+                .duration(800)
+                .delay((d, i) => i * 100)
+                .attr('y', d => y(d.count))
+                .attr('height', d => height - margin.bottom - y(d.count));
+
+            // Count labels
+            svg.selectAll('.count-label')
+                .data(riskDistribution)
+                .join('text')
+                .attr('class', 'count-label')
+                .attr('x', d => x(d.range) + x.bandwidth() / 2)
+                .attr('y', d => y(d.count) - 5)
+                .attr('text-anchor', 'middle')
+                .attr('fill', '#94a3b8')
+                .attr('font-size', '11px')
+                .text(d => d.count.toLocaleString());
+
+            // X axis
+            svg.append('g')
+                .attr('transform', `translate(0,${height - margin.bottom})`)
+                .call(d3.axisBottom(x))
+                .selectAll('text')
+                .attr('fill', '#64748b')
+                .attr('font-size', '10px');
+
+            svg.selectAll('.domain, .tick line').attr('stroke', '#334155');
+        }
+
+        // ============================================
+        // TIMELINE CHART - D3.js
+        // ============================================
+        function createTimelineChart() {
+            const container = document.getElementById('timeline-chart');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            const margin = { top: 20, right: 20, bottom: 30, left: 40 };
+
+            d3.select('#timeline-chart').selectAll('*').remove();
+
+            const svg = d3.select('#timeline-chart')
+                .append('svg')
+                .attr('width', width)
+                .attr('height', height);
+
+            const x = d3.scalePoint()
+                .domain(timelineData.map(d => d.month))
+                .range([margin.left, width - margin.right]);
+
+            const y = d3.scaleLinear()
+                .domain([0, d3.max(timelineData, d => Math.max(d.rule, d.ml, d.combined)) + 2])
+                .range([height - margin.bottom, margin.top]);
+
+            // Line generators
+            const lineRule = d3.line()
+                .x(d => x(d.month))
+                .y(d => y(d.rule))
+                .curve(d3.curveMonotoneX);
+
+            const lineMl = d3.line()
+                .x(d => x(d.month))
+                .y(d => y(d.ml))
+                .curve(d3.curveMonotoneX);
+
+            const lineCombined = d3.line()
+                .x(d => x(d.month))
+                .y(d => y(d.combined))
+                .curve(d3.curveMonotoneX);
+
+            // Draw lines with animation
+            const paths = [
+                { line: lineRule, color: '#3b82f6', data: 'rule' },
+                { line: lineMl, color: '#a855f7', data: 'ml' },
+                { line: lineCombined, color: '#10b981', data: 'combined' }
+            ];
+
+            paths.forEach((p, i) => {
+                const path = svg.append('path')
+                    .datum(timelineData)
+                    .attr('fill', 'none')
+                    .attr('stroke', p.color)
+                    .attr('stroke-width', 2.5)
+                    .attr('d', p.line);
+
+                const totalLength = path.node().getTotalLength();
+                path
+                    .attr('stroke-dasharray', totalLength)
+                    .attr('stroke-dashoffset', totalLength)
+                    .transition()
+                    .duration(1500)
+                    .delay(i * 300)
+                    .attr('stroke-dashoffset', 0);
+            });
+
+            // Add dots
+            paths.forEach((p, i) => {
+                svg.selectAll(`.dot-${p.data}`)
+                    .data(timelineData)
+                    .join('circle')
+                    .attr('class', `dot-${p.data} timeline-dot`)
+                    .attr('cx', d => x(d.month))
+                    .attr('cy', d => y(d[p.data]))
+                    .attr('r', 0)
+                    .attr('fill', p.color)
+                    .transition()
+                    .duration(300)
+                    .delay((d, j) => 1500 + i * 300 + j * 50)
+                    .attr('r', 4);
+            });
+
+            // X axis
+            svg.append('g')
+                .attr('transform', `translate(0,${height - margin.bottom})`)
+                .call(d3.axisBottom(x))
+                .selectAll('text')
+                .attr('fill', '#64748b')
+                .attr('font-size', '10px');
+
+            // Y axis
+            svg.append('g')
+                .attr('transform', `translate(${margin.left},0)`)
+                .call(d3.axisLeft(y).ticks(5))
+                .selectAll('text')
+                .attr('fill', '#64748b')
+                .attr('font-size', '10px');
+
+            svg.selectAll('.domain, .tick line').attr('stroke', '#334155');
+        }
+
+        // ============================================
+        // RISK GAUGES - D3.js + GSAP
+        // ============================================
+        function createGauge(containerId, value, maxValue = 100) {
+            const container = document.getElementById(containerId);
+            const size = 100;
+            const strokeWidth = 10;
+            const radius = (size - strokeWidth) / 2;
+
+            d3.select(`#${containerId}`).selectAll('*').remove();
+
+            const svg = d3.select(`#${containerId}`)
+                .append('svg')
+                .attr('width', size)
+                .attr('height', size / 2 + 20);
+
+            const arc = d3.arc()
+                .innerRadius(radius - strokeWidth)
+                .outerRadius(radius)
+                .startAngle(-Math.PI / 2)
+                .cornerRadius(5);
+
+            // Background arc
+            svg.append('path')
+                .attr('class', 'gauge-track')
+                .attr('d', arc.endAngle(Math.PI / 2))
+                .attr('transform', `translate(${size/2},${size/2})`);
+
+            // Value arc
+            const valueArc = svg.append('path')
+                .attr('class', 'gauge-fill')
+                .attr('transform', `translate(${size/2},${size/2})`)
+                .attr('stroke', value > 60 ? '#ef4444' : value > 40 ? '#f59e0b' : '#10b981')
+                .attr('stroke-width', strokeWidth);
+
+            // Animate the gauge
+            gsap.to({ val: -Math.PI / 2 }, {
+                val: -Math.PI / 2 + (value / maxValue) * Math.PI,
+                duration: 1.5,
+                ease: 'power2.out',
+                onUpdate: function() {
+                    valueArc.attr('d', arc.endAngle(this.targets()[0].val));
+                }
+            });
+
+            // Value text
+            const text = svg.append('text')
+                .attr('x', size / 2)
+                .attr('y', size / 2 + 5)
+                .attr('text-anchor', 'middle')
+                .attr('fill', value > 60 ? '#ef4444' : value > 40 ? '#f59e0b' : '#10b981')
+                .attr('font-size', '20px')
+                .attr('font-weight', 'bold')
+                .text('0');
+
+            gsap.to({ val: 0 }, {
+                val: value,
+                duration: 1.5,
+                ease: 'power2.out',
+                onUpdate: function() {
+                    text.text(Math.round(this.targets()[0].val));
+                }
+            });
+        }
+
+        // ============================================
+        // ALERTS LIST
+        // ============================================
+        function populateAlerts() {
+            const container = document.getElementById('alerts-list');
+            
+            container.innerHTML = alerts.map(alert => `
+                <div class="alert-card px-4 py-3 border-b border-slate-700/50" onclick="showAlertDetails(${alert.id})">
+                    <div class="flex items-start space-x-3">
+                        <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                            alert.severity === 'high' ? 'bg-red-500/20' : 
+                            alert.severity === 'medium' ? 'bg-amber-500/20' : 'bg-blue-500/20'
+                        }">
+                            <i data-lucide="alert-triangle" class="h-4 w-4 ${
+                                alert.severity === 'high' ? 'text-red-400' : 
+                                alert.severity === 'medium' ? 'text-amber-400' : 'text-blue-400'
+                            }"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center space-x-2">
+                                <p class="text-sm font-medium truncate">${alert.title}</p>
+                                <span class="detection-badge ${alert.detection === 'rule' ? 'badge-rule' : 'badge-ml'}">${alert.detection === 'rule' ? 'Rule' : 'ML'}</span>
+                            </div>
+                            <p class="text-xs text-slate-400 truncate mt-0.5">${alert.description}</p>
+                            <div class="flex items-center justify-between mt-1">
+                                <span class="text-xs text-${alert.severity === 'high' ? 'red' : alert.severity === 'medium' ? 'amber' : 'blue'}-400 font-medium">UGX ${(alert.amount / 1000000).toFixed(1)}M</span>
+                                <span class="text-xs text-slate-500">${alert.time}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            lucide.createIcons();
+
+            // Animate alerts
+            gsap.from('.alert-card', {
+                opacity: 0,
+                x: 20,
+                duration: 0.4,
+                stagger: 0.1,
+                ease: 'power2.out'
+            });
+        }
+
+        function showAlertDetails(id) {
+            const alert = alerts.find(a => a.id === id);
+            if (!alert) return;
+
+            const modal = document.getElementById('alert-modal');
+            const title = document.getElementById('modal-title');
+            const content = document.getElementById('modal-content');
+
+            title.textContent = alert.title;
+            content.innerHTML = `
+                <div class="space-y-4">
+                    <div class="flex items-center space-x-2">
+                        <span class="px-2 py-1 rounded text-xs font-medium ${
+                            alert.severity === 'high' ? 'bg-red-500/20 text-red-400' : 
+                            alert.severity === 'medium' ? 'bg-amber-500/20 text-amber-400' : 'bg-blue-500/20 text-blue-400'
+                        }">${alert.severity.toUpperCase()}</span>
+                        <span class="detection-badge ${alert.detection === 'rule' ? 'badge-rule' : 'badge-ml'}">${alert.detection === 'rule' ? 'Rule-Based' : 'ML Detection'}</span>
+                    </div>
+                    <p class="text-slate-300">${alert.description}</p>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-slate-800/50 rounded-lg p-3">
+                            <p class="text-xs text-slate-400">Amount at Risk</p>
+                            <p class="text-xl font-bold text-amber-400">UGX ${(alert.amount / 1000000).toFixed(1)}M</p>
+                        </div>
+                        <div class="bg-slate-800/50 rounded-lg p-3">
+                            <p class="text-xs text-slate-400">Officer</p>
+                            <p class="text-lg font-semibold">${alert.officer}</p>
+                        </div>
+                    </div>
+                    <div class="bg-slate-800/50 rounded-lg p-4">
+                        <p class="text-sm font-medium mb-2">Detection Method</p>
+                        <p class="text-xs text-slate-400">
+                            ${alert.detection === 'rule' 
+                                ? 'This alert was generated by our <span class="text-blue-400">rule-based detection engine</span>, which uses statistical analysis and predefined patterns to identify anomalies.' 
+                                : 'This alert was generated by our <span class="text-purple-400">machine learning model</span>, which has learned patterns specific to your institution\'s data.'}
+                        </p>
+                    </div>
+                    <div class="flex space-x-3">
+                        <button class="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-sm font-medium transition">
+                            Mark as Investigated
+                        </button>
+                        <button class="flex-1 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-medium transition">
+                            False Positive
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        // ============================================
+        // OFFICER RANKING
+        // ============================================
+        function populateOfficerRanking() {
+            const container = document.getElementById('officer-ranking');
+            const sortedOfficers = [...officers].sort((a, b) => b.riskScore - a.riskScore);
+
+            container.innerHTML = sortedOfficers.slice(0, 5).map((officer, i) => `
+                <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                        i === 0 ? 'bg-red-500/20 text-red-400' : 
+                        i === 1 ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-700 text-slate-400'
+                    }">
+                        ${i + 1}
+                    </div>
+                    <div class="flex-1">
+                        <div class="flex items-center justify-between">
+                            <p class="text-sm font-medium">${officer.name}</p>
+                            <span class="text-sm font-bold ${
+                                officer.riskScore > 60 ? 'text-red-400' : 
+                                officer.riskScore > 40 ? 'text-amber-400' : 'text-emerald-400'
+                            }">${officer.riskScore}</span>
+                        </div>
+                        <div class="flex items-center justify-between mt-1">
+                            <p class="text-xs text-slate-500">${officer.branch}</p>
+                            <p class="text-xs text-slate-500">${officer.flagRate}% flag rate</p>
+                        </div>
+                        <div class="h-1.5 bg-slate-700 rounded-full mt-2 overflow-hidden">
+                            <div class="h-full rounded-full transition-all duration-1000 ${
+                                officer.riskScore > 60 ? 'bg-red-500' : 
+                                officer.riskScore > 40 ? 'bg-amber-500' : 'bg-emerald-500'
+                            }" style="width: 0%" data-width="${officer.riskScore}%"></div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            // Animate progress bars
+            setTimeout(() => {
+                document.querySelectorAll('#officer-ranking [data-width]').forEach(el => {
+                    el.style.width = el.dataset.width;
+                });
+            }, 500);
+        }
+
+        // ============================================
+        // INITIALIZATION
+        // ============================================
+        document.addEventListener('DOMContentLoaded', () => {
+            animateStats();
+            createNetworkGraph();
+            createRiskDistribution();
+            createTimelineChart();
+            createGauge('gauge-portfolio', 42);
+            createGauge('gauge-officer', 67);
+            populateAlerts();
+            populateOfficerRanking();
+        });
+
+        // Handle resize
+        window.addEventListener('resize', () => {
+            createNetworkGraph();
+            createRiskDistribution();
+            createTimelineChart();
+        });
+
+        // Close modal on outside click
+        document.getElementById('alert-modal').addEventListener('click', function(e) {
+            if (e.target === this) closeModal();
+        });
+    </script>
+</body>
+</html>
