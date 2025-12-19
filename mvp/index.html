@@ -326,7 +326,7 @@
                     <button onclick="downloadResults()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg font-medium flex items-center">
                         <i data-lucide="download" class="h-4 w-4 mr-2"></i> Download Report
                     </button>
-                    <a href="../index.html" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg font-medium flex items-center">
+                    <a href="https://fraudshield-uganda.netlify.app/" target="_blank" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg font-medium flex items-center">
                         Contact FraudShield <i data-lucide="arrow-right" class="h-4 w-4 ml-2"></i>
                     </a>
                 </div>
@@ -1289,19 +1289,62 @@
         function downloadResults() {
             if (!analysisResults) return;
 
-            const report = {
-                generated: new Date().toISOString(),
-                summary: analysisResults.summary,
-                riskScore: analysisResults.riskScore,
-                alerts: analysisResults.alerts,
-                officers: analysisResults.officers
-            };
+            // Build CSV content
+            const lines = [];
 
-            const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+            // Header section
+            lines.push('FraudShield Uganda - Fraud Detection Report');
+            lines.push(`Generated: ${new Date().toISOString()}`);
+            lines.push(`Risk Score: ${analysisResults.riskScore}/100`);
+            lines.push(`Total Records: ${analysisResults.summary.total}`);
+            lines.push(`Critical Alerts: ${analysisResults.summary.critical}`);
+            lines.push(`High Risk Alerts: ${analysisResults.summary.high}`);
+            lines.push(`Medium Risk Alerts: ${analysisResults.summary.medium}`);
+            lines.push('');
+
+            // Alerts section
+            lines.push('=== FRAUD ALERTS ===');
+            lines.push('Severity,Type,Title,Description,Amount at Risk (UGX),Officer ID');
+
+            analysisResults.alerts.forEach(alert => {
+                const row = [
+                    alert.severity || '',
+                    (alert.type || '').replace(/_/g, ' '),
+                    `"${(alert.title || '').replace(/"/g, '""')}"`,
+                    `"${(alert.description || '').replace(/"/g, '""')}"`,
+                    alert.amount || 0,
+                    alert.officer || ''
+                ];
+                lines.push(row.join(','));
+            });
+
+            lines.push('');
+
+            // Officer ranking section
+            lines.push('=== OFFICER RISK RANKING ===');
+            lines.push('Officer ID,Name,Loan Count,Alert Count,Flag Rate (%),Risk Score');
+
+            Object.entries(analysisResults.officers)
+                .sort((a, b) => b[1].flagRate - a[1].flagRate)
+                .forEach(([id, stats]) => {
+                    const riskScore = Math.min(100, (stats.flagRate * 10) + (stats.zScore > 2 ? 30 : 0));
+                    const row = [
+                        id,
+                        `"${(stats.name || '').replace(/"/g, '""')}"`,
+                        stats.count || 0,
+                        stats.flagRate || 0,
+                        ((stats.flagRate / stats.count) * 100 || 0).toFixed(1),
+                        Math.round(riskScore)
+                    ];
+                    lines.push(row.join(','));
+                });
+
+            const csvContent = lines.join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `fraudshield-report-${new Date().toISOString().split('T')[0]}.json`;
+            a.download = `fraudshield-report-${new Date().toISOString().split('T')[0]}.csv`;
             a.click();
             URL.revokeObjectURL(url);
         }
