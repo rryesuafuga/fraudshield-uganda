@@ -362,6 +362,7 @@
             borrower_id: { description: 'Borrower/Member ID', required: true },
             borrower_name: { description: 'Borrower Name', required: false },
             phone: { description: 'Phone Number', required: true },
+            national_id: { description: 'National ID (NIN)', required: false },
             amount: { description: 'Loan Amount', required: true },
             loan_date: { description: 'Loan Date', required: false },
             approval_time: { description: 'Approval Time', required: false },
@@ -370,24 +371,58 @@
             branch: { description: 'Branch', required: false },
             status: { description: 'Status', required: false },
             guarantor_name: { description: 'Guarantor Name', required: false },
-            national_id: { description: 'National ID', required: false }
+            guarantor_phone: { description: 'Guarantor Phone', required: false },
+            interest_rate: { description: 'Interest Rate', required: false },
+            term_months: { description: 'Term (Months)', required: false },
+            purpose: { description: 'Loan Purpose', required: false },
+            address: { description: 'Address', required: false }
         };
 
-        // Column name variations for matching
+        // Column name variations for matching (synced with backend)
         const NAME_VARIATIONS = {
-            loan_id: ['loan_id', 'loanid', 'loan_no', 'loan_number', 'loan_ref', 'reference', 'contract_id', 'ref_no', 'id', 'txn_id'],
-            borrower_id: ['borrower_id', 'member_id', 'memberid', 'client_id', 'clientid', 'customer_id', 'member_no', 'account_no'],
-            borrower_name: ['borrower_name', 'name', 'full_name', 'fullname', 'member_name', 'client_name', 'customer_name', 'applicant'],
-            phone: ['phone', 'phone_number', 'phonenumber', 'mobile', 'mobile_number', 'telephone', 'tel', 'contact', 'phone_no'],
-            amount: ['amount', 'loan_amount', 'loanamount', 'principal', 'principal_amount', 'disbursed_amount', 'approved_amount'],
-            loan_date: ['loan_date', 'loandate', 'disbursement_date', 'date_disbursed', 'issue_date', 'date', 'created_date', 'start_date'],
-            approval_time: ['approval_time', 'time', 'created_at', 'timestamp', 'datetime', 'approved_time'],
-            officer_id: ['officer_id', 'officerid', 'loan_officer_id', 'staff_id', 'employee_id', 'approved_by', 'created_by', 'agent_id'],
-            officer_name: ['officer_name', 'loan_officer', 'staff_name', 'agent_name', 'approved_by_name'],
-            branch: ['branch', 'branch_name', 'branch_id', 'location', 'office', 'center', 'branch_code'],
-            status: ['status', 'loan_status', 'state', 'current_status', 'account_status'],
-            guarantor_name: ['guarantor_name', 'guarantor', 'witness', 'reference_name', 'referee'],
-            national_id: ['national_id', 'nin', 'id_no', 'id_number', 'idno', 'national_identification']
+            loan_id: ['loan_id', 'loanid', 'loan_no', 'loan_number', 'loan_ref', 'reference',
+                'loan_reference', 'contract_id', 'contract_no', 'application_id',
+                'disbursement_id', 'txn_id', 'transaction_id', 'id', 'ref_no'],
+            borrower_id: ['borrower_id', 'borrowerid', 'member_id', 'memberid', 'client_id',
+                'clientid', 'customer_id', 'customerid', 'member_no', 'member_number',
+                'client_no', 'account_no', 'account_number', 'sacco_no'],
+            borrower_name: ['borrower_name', 'borrowername', 'name', 'full_name', 'fullname',
+                'member_name', 'membername', 'client_name', 'clientname',
+                'customer_name', 'customername', 'applicant_name', 'applicant'],
+            phone: ['phone', 'phone_number', 'phonenumber', 'mobile', 'mobile_number',
+                'mobilenumber', 'telephone', 'tel', 'contact', 'contact_number',
+                'cell', 'cellphone', 'phone_no', 'tel_no', 'mobile_no'],
+            national_id: ['national_id', 'nationalid', 'national_id_no', 'nin', 'id_no',
+                'id_number', 'idno', 'national_identification', 'id_card',
+                'identification', 'nid', 'govt_id', 'government_id'],
+            amount: ['amount', 'loan_amount', 'loanamount', 'principal', 'principal_amount',
+                'disbursed_amount', 'disbursement', 'approved_amount', 'requested_amount',
+                'credit_amount', 'facility_amount', 'sum', 'total', 'value'],
+            loan_date: ['loan_date', 'loandate', 'disbursement_date', 'date_disbursed',
+                'issue_date', 'created_date', 'application_date', 'approved_date',
+                'date', 'transaction_date', 'txn_date', 'start_date'],
+            approval_time: ['approval_time', 'time', 'created_at', 'timestamp', 'datetime',
+                'approved_time', 'creation_time', 'entry_time'],
+            officer_id: ['officer_id', 'officerid', 'loan_officer_id', 'staff_id', 'staffid',
+                'employee_id', 'employeeid', 'user_id', 'userid', 'approved_by',
+                'created_by', 'processed_by', 'agent_id', 'agent_code'],
+            officer_name: ['officer_name', 'officername', 'loan_officer', 'loanofficer',
+                'staff_name', 'staffname', 'approved_by_name', 'agent_name'],
+            branch: ['branch', 'branch_name', 'branchname', 'branch_id', 'branchid',
+                'branch_code', 'location', 'office', 'center', 'unit'],
+            status: ['status', 'loan_status', 'loanstatus', 'state', 'current_status',
+                'account_status', 'disbursement_status'],
+            guarantor_name: ['guarantor_name', 'guarantorname', 'guarantor', 'witness',
+                'reference_name', 'referee_name', 'co_applicant'],
+            guarantor_phone: ['guarantor_phone', 'guarantorphone', 'guarantor_mobile',
+                'guarantor_contact', 'referee_phone', 'witness_phone'],
+            interest_rate: ['interest_rate', 'interestrate', 'rate', 'int_rate', 'interest'],
+            term_months: ['term_months', 'term', 'tenure', 'loan_term', 'duration',
+                'months', 'period', 'repayment_period'],
+            purpose: ['purpose', 'loan_purpose', 'product', 'product_type', 'loan_type',
+                'facility_type', 'category', 'use_of_funds'],
+            address: ['address', 'residential_address', 'home_address', 'location',
+                'village', 'parish', 'district', 'region']
         };
 
         // ============================================
@@ -568,25 +603,67 @@
         function detectByPattern(sample) {
             const strSample = sample.map(String);
 
-            // Phone number detection (Uganda format)
-            const phonePattern = /^(\+?256|0)[0-9]{9}$/;
-            const phoneMatches = strSample.filter(v => phonePattern.test(v.replace(/\s/g, ''))).length;
+            // Phone number detection (Uganda format: 0772xxx, +256xxx, 256xxx)
+            const phonePatterns = [
+                /^(\+?256|0)[0-9]{9}$/,      // Standard Uganda format
+                /^07[0-9]{8}$/,               // Uganda mobile
+                /^256[0-9]{9}$/,              // Without plus
+                /^\+?[0-9]{10,15}$/           // International format
+            ];
+            const phoneMatches = strSample.filter(v => {
+                const cleaned = v.replace(/[\s\-()]/g, '');
+                return phonePatterns.some(p => p.test(cleaned));
+            }).length;
             if (phoneMatches / strSample.length > 0.7) {
-                return { field: 'phone', confidence: 90 };
+                return { field: 'phone', confidence: 90, method: 'pattern' };
             }
 
-            // Date detection
-            const datePattern = /^\d{4}-\d{2}-\d{2}$|^\d{2}\/\d{2}\/\d{4}$/;
-            const dateMatches = strSample.filter(v => datePattern.test(v)).length;
+            // Uganda National ID (NIN) detection: CF/CM followed by 13 digits and a letter
+            const ninPatterns = [
+                /^[A-Z]{2}\d{13}[A-Z0-9]$/i,  // Uganda NIN format (CF/CM + 13 digits + letter)
+                /^CF\d{13}[A-Z]$/i,            // Common female format
+                /^CM\d{13}[A-Z]$/i,            // Common male format
+                /^\d{14}$/                      // Numeric only variant
+            ];
+            const ninMatches = strSample.filter(v => {
+                const cleaned = v.replace(/[\s\-]/g, '').toUpperCase();
+                return ninPatterns.some(p => p.test(cleaned));
+            }).length;
+            if (ninMatches / strSample.length > 0.7) {
+                return { field: 'national_id', confidence: 92, method: 'pattern' };
+            }
+
+            // Date detection (multiple formats)
+            const datePatterns = [
+                /^\d{4}-\d{2}-\d{2}$/,         // ISO: 2024-01-15
+                /^\d{2}\/\d{2}\/\d{4}$/,       // DD/MM/YYYY
+                /^\d{2}-\d{2}-\d{4}$/,         // DD-MM-YYYY
+                /^\d{4}\/\d{2}\/\d{2}$/        // YYYY/MM/DD
+            ];
+            const dateMatches = strSample.filter(v => datePatterns.some(p => p.test(v))).length;
             if (dateMatches / strSample.length > 0.7) {
-                return { field: 'loan_date', confidence: 85 };
+                return { field: 'loan_date', confidence: 85, method: 'pattern' };
             }
 
             // Time detection
             const timePattern = /^\d{2}:\d{2}(:\d{2})?$/;
             const timeMatches = strSample.filter(v => timePattern.test(v)).length;
             if (timeMatches / strSample.length > 0.7) {
-                return { field: 'approval_time', confidence: 80 };
+                return { field: 'approval_time', confidence: 80, method: 'pattern' };
+            }
+
+            // Email detection
+            const emailPattern = /^[\w\.\-]+@[\w\.\-]+\.\w+$/;
+            const emailMatches = strSample.filter(v => emailPattern.test(v)).length;
+            if (emailMatches / strSample.length > 0.7) {
+                return { field: 'email', confidence: 88, method: 'pattern' };
+            }
+
+            // Formatted amount detection (e.g., "2,500,000" or "2,500,000.00")
+            const amountPattern = /^\d{1,3}(,\d{3})+(\.\d{2})?$/;
+            const amountMatches = strSample.filter(v => amountPattern.test(v)).length;
+            if (amountMatches / strSample.length > 0.7) {
+                return { field: 'amount', confidence: 85, method: 'pattern' };
             }
 
             return null;
@@ -603,7 +680,17 @@
 
                 // Amount detection: large positive numbers
                 if (min >= 0 && mean > 100000) {
-                    return { field: 'amount', confidence: 75 };
+                    return { field: 'amount', confidence: 75, method: 'statistics' };
+                }
+
+                // Interest rate: 0-100 range with decimals
+                if (min >= 0 && max <= 100 && mean < 50) {
+                    return { field: 'interest_rate', confidence: 60, method: 'statistics' };
+                }
+
+                // Term months: small positive integers
+                if (min >= 1 && max <= 360 && Number.isInteger(mean)) {
+                    return { field: 'term_months', confidence: 55, method: 'statistics' };
                 }
             }
 
@@ -611,23 +698,32 @@
             const unique = new Set(sample);
             if (unique.size / sample.length > 0.95) {
                 if (String(sample[0]).length < 15) {
-                    return { field: 'loan_id', confidence: 60 };
+                    return { field: 'loan_id', confidence: 60, method: 'statistics' };
                 }
             }
 
-            // Check for names
-            const namePattern = /^[A-Za-z]+\s+[A-Za-z]+/;
-            const nameMatches = sample.filter(v => namePattern.test(String(v))).length;
+            // Check for names (2-4 words, mostly alphabetic)
+            const namePattern = /^[A-Za-z]+\s+[A-Za-z]+(\s+[A-Za-z]+)?(\s+[A-Za-z]+)?$/;
+            const nameMatches = sample.filter(v => namePattern.test(String(v).trim())).length;
             if (nameMatches / sample.length > 0.7) {
-                return { field: 'borrower_name', confidence: 70 };
+                return { field: 'borrower_name', confidence: 70, method: 'statistics' };
             }
 
-            // Check for status
-            const statusKeywords = ['active', 'inactive', 'paid', 'closed', 'pending', 'approved', 'rejected', 'defaulted', 'completed'];
-            const lowerSample = sample.map(v => String(v).toLowerCase());
+            // Check for status keywords
+            const statusKeywords = ['active', 'inactive', 'paid', 'closed', 'pending', 'approved',
+                'rejected', 'defaulted', 'completed', 'disbursed', 'overdue', 'written_off'];
+            const lowerSample = sample.map(v => String(v).toLowerCase().trim());
             const statusMatches = lowerSample.filter(v => statusKeywords.includes(v)).length;
             if (statusMatches / sample.length > 0.5) {
-                return { field: 'status', confidence: 80 };
+                return { field: 'status', confidence: 80, method: 'statistics' };
+            }
+
+            // Check for branch/location patterns (short strings, repeated values)
+            if (unique.size < sample.length * 0.3 && sample.length > 10) {
+                const avgLen = sample.reduce((sum, v) => sum + String(v).length, 0) / sample.length;
+                if (avgLen < 30 && avgLen > 3) {
+                    return { field: 'branch', confidence: 55, method: 'statistics' };
+                }
             }
 
             return null;
@@ -662,6 +758,16 @@
         // ============================================
         // MAPPING UI
         // ============================================
+        // Detection method labels for display
+        const METHOD_LABELS = {
+            'exact_match': { label: 'Exact', color: 'emerald', icon: '✓' },
+            'name_match': { label: 'Name', color: 'emerald', icon: '≈' },
+            'fuzzy_match': { label: 'Fuzzy', color: 'blue', icon: '~' },
+            'pattern': { label: 'Pattern', color: 'purple', icon: '⬡' },
+            'statistics': { label: 'Stats', color: 'cyan', icon: '📊' },
+            'manual': { label: 'Manual', color: 'slate', icon: '✎' }
+        };
+
         function renderMappingTable() {
             const columns = Object.keys(rawData[0] || {});
             const container = document.getElementById('mapping-table');
@@ -671,15 +777,18 @@
                 '<th class="pb-2 pr-4">Original Column</th>' +
                 '<th class="pb-2 pr-4">Detected As</th>' +
                 '<th class="pb-2 pr-4">Confidence</th>' +
+                '<th class="pb-2 pr-4">Method</th>' +
                 '<th class="pb-2">Sample Values</th></tr></thead><tbody>';
 
             columns.forEach(col => {
                 const mapping = columnMappings[col];
-                const sample = rawData.slice(0, 3).map(r => r[col]).filter(v => v).slice(0, 2);
+                // Show up to 4 sample values for better context
+                const sample = rawData.slice(0, 5).map(r => r[col]).filter(v => v !== undefined && v !== null && v !== '').slice(0, 4);
 
                 if (mapping) {
                     mapped++;
                     const confColor = mapping.confidence >= 80 ? 'emerald' : mapping.confidence >= 60 ? 'amber' : 'red';
+                    const methodInfo = METHOD_LABELS[mapping.method] || { label: mapping.method, color: 'slate', icon: '?' };
 
                     html += `<tr class="border-b border-slate-800">
                         <td class="py-2 pr-4 font-mono text-slate-300">${col}</td>
@@ -699,7 +808,12 @@
                                 <span class="text-xs text-${confColor}-400">${mapping.confidence}%</span>
                             </div>
                         </td>
-                        <td class="py-2 text-xs text-slate-500 truncate max-w-xs">${sample.join(', ')}</td>
+                        <td class="py-2 pr-4">
+                            <span class="px-2 py-0.5 text-xs rounded bg-${methodInfo.color}-500/20 text-${methodInfo.color}-400">
+                                ${methodInfo.icon} ${methodInfo.label}
+                            </span>
+                        </td>
+                        <td class="py-2 text-xs text-slate-500 truncate max-w-xs" title="${sample.join(', ')}">${sample.join(', ')}</td>
                     </tr>`;
                 } else {
                     html += `<tr class="border-b border-slate-800 bg-slate-800/30">
@@ -712,8 +826,9 @@
                                 ).join('')}
                             </select>
                         </td>
-                        <td class="py-2 pr-4 text-xs text-slate-500">Manual selection needed</td>
-                        <td class="py-2 text-xs text-slate-500 truncate max-w-xs">${sample.join(', ')}</td>
+                        <td class="py-2 pr-4 text-xs text-slate-500">-</td>
+                        <td class="py-2 pr-4 text-xs text-slate-500">-</td>
+                        <td class="py-2 text-xs text-slate-500 truncate max-w-xs" title="${sample.join(', ')}">${sample.join(', ')}</td>
                     </tr>`;
                 }
             });
