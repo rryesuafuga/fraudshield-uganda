@@ -5,6 +5,10 @@ from CSV/Excel files with various naming conventions.
 
 This allows FraudShield to accept data exports from ANY banking/SACCO system
 without requiring a specific format.
+
+Enhanced with ML-based schema matching:
+- RapidFuzz for 10-15x faster string matching
+- Sentence Transformers for semantic column matching (when unmapped)
 """
 
 import pandas as pd
@@ -12,8 +16,179 @@ import numpy as np
 import re
 from typing import Dict, List, Tuple, Optional, Any
 from collections import Counter
-from difflib import SequenceMatcher
 from dataclasses import dataclass
+import logging
+
+logger = logging.getLogger(__name__)
+
+# Try to import RapidFuzz for faster string matching (10-15x faster)
+# Falls back to difflib.SequenceMatcher if not available
+try:
+    from rapidfuzz import fuzz as rapidfuzz_fuzz
+    RAPIDFUZZ_AVAILABLE = True
+    logger.info("RapidFuzz available - using optimized string matching")
+except ImportError:
+    from difflib import SequenceMatcher
+    RAPIDFUZZ_AVAILABLE = False
+    logger.info("RapidFuzz not available - using standard SequenceMatcher")
+
+# Try to import Sentence Transformers for semantic matching
+# This is optional and provides semantic understanding of column names
+try:
+    from sentence_transformers import SentenceTransformer
+    import torch
+    SENTENCE_TRANSFORMERS_AVAILABLE = True
+    logger.info("Sentence Transformers available - semantic matching enabled")
+except ImportError:
+    SENTENCE_TRANSFORMERS_AVAILABLE = False
+    logger.info("Sentence Transformers not available - semantic matching disabled")
+
+
+class SemanticColumnMatcher:
+    """
+    ML-based semantic column matcher using Sentence Transformers.
+
+    Uses pre-trained embeddings to find semantic similarity between
+    column names and standard field descriptions. This catches variations
+    not covered by the explicit variations list.
+
+    Example: "borrower_tel" → "phone" (semantic understanding)
+    """
+
+    # Singleton pattern - only load model once
+    _instance = None
+    _model = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
+    def __init__(self):
+        if not SENTENCE_TRANSFORMERS_AVAILABLE:
+            self.enabled = False
+            return
+
+        self.enabled = True
+        self._field_embeddings = None
+        self._field_names = None
+
+        # Field descriptions for semantic matching
+        # More descriptive = better semantic matching
+        self.FIELD_DESCRIPTIONS = {
+            'loan_id': 'loan identifier reference number contract id transaction',
+            'borrower_id': 'borrower member client customer account identifier number',
+            'borrower_name': 'borrower member client customer full name person applicant',
+            'phone': 'phone mobile telephone contact number cell calling',
+            'national_id': 'national id identification government id nin passport',
+            'amount': 'loan amount principal money value disbursed sum total',
+            'loan_date': 'loan date disbursement issue created application start',
+            'disbursement_date': 'disbursement date payout release funds transfer',
+            'approval_time': 'approval time timestamp created datetime hour minute',
+            'officer_id': 'officer staff employee agent user approved by identifier',
+            'officer_name': 'officer staff employee agent name loan processor',
+            'branch': 'branch office location center unit regional area',
+            'status': 'status state condition current active completed paid defaulted',
+            'guarantor_name': 'guarantor witness referee reference co-applicant name',
+            'guarantor_phone': 'guarantor witness referee phone mobile contact',
+            'repayment_amount': 'repayment installment payment monthly emi periodic',
+            'interest_rate': 'interest rate percentage annual monthly',
+            'term_months': 'term months duration tenure period loan length',
+            'purpose': 'purpose product type loan category facility use of funds',
+            'address': 'address location residential home village district region',
+            'latitude': 'latitude lat gps coordinate north south location',
+            'longitude': 'longitude long lng gps coordinate east west location'
+        }
+
+    def _load_model(self):
+        """Lazy load the model only when needed"""
+        if SemanticColumnMatcher._model is None and SENTENCE_TRANSFORMERS_AVAILABLE:
+            try:
+                # Use smaller, faster model for better performance
+                SemanticColumnMatcher._model = SentenceTransformer('all-MiniLM-L6-v2')
+                logger.info("Sentence Transformer model loaded: all-MiniLM-L6-v2")
+            except Exception as e:
+                logger.warning(f"Failed to load Sentence Transformer model: {e}")
+                self.enabled = False
+                return None
+        return SemanticColumnMatcher._model
+
+    def _get_field_embeddings(self):
+        """Get or compute embeddings for standard fields"""
+        if self._field_embeddings is None:
+            model = self._load_model()
+            if model is None:
+                return None, None
+
+            self._field_names = list(self.FIELD_DESCRIPTIONS.keys())
+            descriptions = list(self.FIELD_DESCRIPTIONS.values())
+            self._field_embeddings = model.encode(descriptions, convert_to_tensor=True)
+
+        return self._field_embeddings, self._field_names
+
+    def find_semantic_match(self, column_name: str, sample_values: List[Any] = None) -> Optional[Tuple[str, float]]:
+        """
+        Find the best semantic match for a column name.
+
+        Args:
+            column_name: The column name to match
+            sample_values: Optional sample values to improve matching
+
+        Returns:
+            Tuple of (standard_field, confidence) or None if no good match
+        """
+        if not self.enabled:
+            return None
+
+        model = self._load_model()
+        if model is None:
+            return None
+
+        field_embeddings, field_names = self._get_field_embeddings()
+        if field_embeddings is None:
+            return None
+
+        try:
+            # Create query text from column name and sample values
+            query = column_name.replace('_', ' ').replace('-', ' ').lower()
+            if sample_values:
+                # Add sample values for context (up to 5)
+                samples_str = ', '.join(str(v) for v in sample_values[:5] if v is not None)
+                if samples_str:
+                    query = f"{query}: {samples_str}"
+
+            # Encode query
+            query_embedding = model.encode(query, convert_to_tensor=True)
+
+            # Compute cosine similarities
+            if hasattr(torch, 'nn'):
+                similarities = torch.nn.functional.cosine_similarity(
+                    query_embedding.unsqueeze(0),
+                    field_embeddings
+                )
+            else:
+                # Fallback if torch.nn not available
+                from sklearn.metrics.pairwise import cosine_similarity
+                similarities = cosine_similarity(
+                    query_embedding.cpu().numpy().reshape(1, -1),
+                    field_embeddings.cpu().numpy()
+                )[0]
+
+            # Find best match
+            if hasattr(similarities, 'cpu'):
+                similarities = similarities.cpu().numpy()
+
+            best_idx = int(similarities.argmax())
+            best_score = float(similarities[best_idx])
+
+            # Only return if confidence is above threshold (0.5)
+            if best_score > 0.5:
+                return (field_names[best_idx], best_score)
+
+        except Exception as e:
+            logger.warning(f"Semantic matching failed for '{column_name}': {e}")
+
+        return None
 
 
 @dataclass
@@ -30,10 +205,20 @@ class SmartColumnMapper:
     """
     Intelligently maps columns from uploaded data to standard FraudShield fields.
 
-    Uses three detection methods:
-    1. Fuzzy Name Matching - Match column names to known variations
-    2. Pattern Detection - Detect data types from content patterns (phone, date, etc.)
-    3. Statistical Analysis - Infer type from data characteristics
+    Uses five detection methods (in priority order):
+    1. Fuzzy Name Matching (High confidence) - Match column names to known variations (>80%)
+    2. Pattern Detection - Detect data types from content patterns (phone, date, etc.) (>70%)
+    3. Statistical Analysis - Infer type from data characteristics (>60%)
+    4. Fuzzy Name Matching (Low threshold) - Looser name matching (>50%)
+    5. ML Semantic Matching - Use Sentence Transformers for semantic similarity (>55%)
+
+    The ML-based matching (step 5) requires the sentence-transformers package and
+    uses the all-MiniLM-L6-v2 model for fast, accurate semantic matching.
+
+    Performance optimizations:
+    - RapidFuzz for 10-15x faster string matching (if available)
+    - Lazy-loaded ML models to minimize startup time
+    - Singleton pattern for model caching
     """
 
     # Standard field names that FraudShield expects
@@ -193,9 +378,22 @@ class SmartColumnMapper:
         ]
     }
 
-    def __init__(self):
+    def __init__(self, use_semantic_matching: bool = True):
+        """
+        Initialize the Smart Column Mapper.
+
+        Args:
+            use_semantic_matching: Enable ML-based semantic matching for unmapped columns.
+                                  Requires sentence-transformers package.
+        """
         self.mappings: Dict[str, ColumnMapping] = {}
         self.unmapped_columns: List[str] = []
+        self.use_semantic_matching = use_semantic_matching
+
+        # Initialize semantic matcher if available and enabled
+        self.semantic_matcher = None
+        if use_semantic_matching and SENTENCE_TRANSFORMERS_AVAILABLE:
+            self.semantic_matcher = SemanticColumnMatcher()
 
     def analyze_dataframe(self, df: pd.DataFrame) -> Dict[str, ColumnMapping]:
         """
@@ -277,10 +475,27 @@ class SmartColumnMapper:
                 sample_values=sample[:5]
             )
 
+        # Method 5: ML-based semantic matching (if enabled)
+        # This uses Sentence Transformers to find semantic similarity
+        if self.semantic_matcher and self.semantic_matcher.enabled:
+            semantic_match = self.semantic_matcher.find_semantic_match(col, sample[:10])
+            if semantic_match and semantic_match[1] > 0.55:
+                return ColumnMapping(
+                    original_name=col,
+                    standard_name=semantic_match[0],
+                    confidence=semantic_match[1],
+                    detection_method='semantic_ml',
+                    sample_values=sample[:5]
+                )
+
         return None
 
     def _match_by_name(self, col: str) -> Optional[Tuple[str, float]]:
-        """Match column name to standard fields using fuzzy matching"""
+        """Match column name to standard fields using fuzzy matching
+
+        Uses RapidFuzz when available for 10-15x faster matching,
+        falls back to SequenceMatcher otherwise.
+        """
         col_clean = col.lower().strip().replace(' ', '_').replace('-', '_')
 
         best_match = None
@@ -299,8 +514,13 @@ class SmartColumnMapper:
                         best_score = score
                         best_match = standard_field
 
-                # Fuzzy matching
-                similarity = SequenceMatcher(None, col_clean, variation).ratio()
+                # Fuzzy matching - use RapidFuzz if available (10-15x faster)
+                if RAPIDFUZZ_AVAILABLE:
+                    # RapidFuzz returns 0-100, normalize to 0-1
+                    similarity = rapidfuzz_fuzz.ratio(col_clean, variation) / 100.0
+                else:
+                    similarity = SequenceMatcher(None, col_clean, variation).ratio()
+
                 if similarity > best_score:
                     best_score = similarity
                     best_match = standard_field
@@ -507,13 +727,26 @@ class SmartColumnMapper:
                 'samples': mapping.sample_values[:3]
             })
 
+        # Count detection methods used
+        method_counts = {}
+        for m in mapped:
+            method = m['method']
+            method_counts[method] = method_counts.get(method, 0) + 1
+
         return {
             'total_columns': len(self.mappings) + len(self.unmapped_columns),
             'mapped_columns': len(self.mappings),
             'unmapped_columns': len(self.unmapped_columns),
             'mappings': sorted(mapped, key=lambda x: x['confidence'], reverse=True),
             'unmapped': self.unmapped_columns,
-            'required_fields_found': self._check_required_fields()
+            'required_fields_found': self._check_required_fields(),
+            'detection_methods_used': method_counts,
+            'ml_features': {
+                'rapidfuzz_enabled': RAPIDFUZZ_AVAILABLE,
+                'semantic_matching_enabled': SENTENCE_TRANSFORMERS_AVAILABLE and (
+                    self.semantic_matcher is not None and self.semantic_matcher.enabled
+                )
+            }
         }
 
     def _check_required_fields(self) -> Dict[str, bool]:
