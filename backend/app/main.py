@@ -3,18 +3,21 @@ FraudShield Uganda - Backend API
 Hybrid Fraud Detection Platform for Microfinance Institutions
 """
 
-from fastapi import FastAPI, HTTPException, UploadFile, File, Depends
+from fastapi import FastAPI, HTTPException, UploadFile, File, Depends, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 import pandas as pd
+import numpy as np
 import json
+import io
 from datetime import datetime
 
 from app.services.detection.rule_engine import RuleBasedDetector
 from app.services.detection.ml_engine import MLDetector
 from app.services.data_generator import generate_sample_data
+from app.services.column_mapper import SmartColumnMapper, auto_map_columns
 from app.ml.features import FeatureEngineer
 
 app = FastAPI(
@@ -38,6 +41,7 @@ app.add_middleware(
 rule_detector = RuleBasedDetector()
 ml_detector = MLDetector()
 feature_engineer = FeatureEngineer()
+column_mapper = SmartColumnMapper()
 
 
 # ============================================
@@ -354,6 +358,226 @@ def _get_detection_timeline() -> list:
         })
     
     return timeline
+
+
+# ============================================
+# FILE UPLOAD & COLUMN MAPPING ENDPOINTS
+# ============================================
+
+@app.post("/api/v1/upload/analyze-columns")
+async def analyze_columns(file: UploadFile = File(...)):
+    """
+    Upload a CSV/Excel file and get smart column mapping suggestions.
+    Uses pattern matching, fuzzy matching, and statistical analysis.
+    """
+    try:
+        # Read file content
+        content = await file.read()
+        filename = file.filename.lower()
+
+        # Parse file
+        if filename.endswith('.csv'):
+            df = pd.read_csv(io.BytesIO(content))
+        elif filename.endswith(('.xlsx', '.xls')):
+            df = pd.read_excel(io.BytesIO(content))
+        else:
+            raise HTTPException(status_code=400, detail="Unsupported file format. Use CSV or Excel.")
+
+        # Run column mapping
+        mapper = SmartColumnMapper()
+        mappings = mapper.analyze_dataframe(df)
+        report = mapper.get_mapping_report()
+
+        # Add data preview
+        preview = df.head(10).to_dict(orient='records')
+
+        return {
+            "status": "success",
+            "filename": file.filename,
+            "total_rows": len(df),
+            "total_columns": len(df.columns),
+            "column_mapping": report,
+            "data_preview": preview
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/v1/upload/analyze")
+async def analyze_uploaded_file(
+    file: UploadFile = File(...),
+    custom_mappings: Optional[str] = Form(None)
+):
+    """
+    Upload a file and run full fraud detection analysis.
+    Optionally provide custom column mappings as JSON string.
+    """
+    try:
+        # Read file content
+        content = await file.read()
+        filename = file.filename.lower()
+
+        # Parse file
+        if filename.endswith('.csv'):
+            df = pd.read_csv(io.BytesIO(content))
+        elif filename.endswith(('.xlsx', '.xls')):
+            df = pd.read_excel(io.BytesIO(content))
+        else:
+            raise HTTPException(status_code=400, detail="Unsupported file format")
+
+        # Parse custom mappings if provided
+        overrides = json.loads(custom_mappings) if custom_mappings else None
+
+        # Run column mapping and standardize
+        df_standard, mapping_report = auto_map_columns(df)
+
+        # Apply custom overrides if provided
+        if overrides:
+            for orig, standard in overrides.items():
+                if orig in df.columns:
+                    df_standard[standard] = df[orig]
+
+        # Add required columns with defaults if missing
+        required_defaults = {
+            'officer_name': df_standard.get('officer_id', 'Unknown'),
+            'branch_name': df_standard.get('branch', 'Unknown'),
+            'status': 'active',
+            'guarantor_name': None,
+            'latitude': None,
+            'longitude': None,
+            'created_at': pd.Timestamp.now()
+        }
+
+        for col, default in required_defaults.items():
+            if col not in df_standard.columns:
+                df_standard[col] = default
+
+        # Rename columns to match what detectors expect
+        column_rename = {
+            'phone': 'phone_number',
+            'loan_date': 'disbursement_date',
+            'branch': 'branch_name'
+        }
+        df_standard = df_standard.rename(columns={
+            k: v for k, v in column_rename.items() if k in df_standard.columns
+        })
+
+        # Run fraud detection
+        results = {
+            "analysis_id": str(datetime.now().timestamp()),
+            "filename": file.filename,
+            "started_at": datetime.now().isoformat(),
+            "column_mapping": mapping_report,
+            "data_summary": {
+                "total_rows": len(df_standard),
+                "total_columns": len(df_standard.columns),
+                "columns_mapped": mapping_report['mapped_columns'],
+                "columns_unmapped": mapping_report['unmapped_columns']
+            },
+            "alerts": [],
+            "officer_analysis": [],
+            "risk_score": 0
+        }
+
+        # Run rule-based detection
+        try:
+            rule_alerts = rule_detector.detect_all(df_standard)
+            results["alerts"].extend(rule_alerts)
+            results["rule_based_alerts"] = len(rule_alerts)
+        except Exception as e:
+            results["rule_engine_error"] = str(e)
+            results["rule_based_alerts"] = 0
+
+        # Run ML detection
+        try:
+            features = feature_engineer.create_features(df_standard)
+            ml_alerts = ml_detector.detect(df_standard, features)
+            results["alerts"].extend(ml_alerts)
+            results["ml_alerts"] = len(ml_alerts)
+        except Exception as e:
+            results["ml_engine_error"] = str(e)
+            results["ml_alerts"] = 0
+
+        # Calculate summary
+        results["completed_at"] = datetime.now().isoformat()
+        results["total_alerts"] = len(results["alerts"])
+        results["amount_at_risk"] = sum(a.get("amount_at_risk", 0) for a in results["alerts"])
+
+        # Calculate risk score (0-100)
+        severity_weights = {'high': 10, 'medium': 5, 'low': 2}
+        risk_points = sum(
+            severity_weights.get(a.get('severity', 'low'), 1)
+            for a in results["alerts"]
+        )
+        results["risk_score"] = min(100, risk_points)
+
+        # Alert summary by type
+        from collections import Counter
+        alert_types = Counter(a.get('type') for a in results["alerts"])
+        results["alert_summary"] = dict(alert_types)
+
+        # Severity distribution
+        severities = Counter(a.get('severity') for a in results["alerts"])
+        results["severity_distribution"] = dict(severities)
+
+        # Officer analysis
+        results["officer_analysis"] = _get_officer_ranking(df_standard, results["alerts"])
+
+        return results
+
+    except Exception as e:
+        import traceback
+        raise HTTPException(status_code=500, detail=f"{str(e)}\n{traceback.format_exc()}")
+
+
+@app.get("/api/v1/sample-data")
+async def get_sample_data(num_rows: int = 500, fraud_rate: float = 0.05):
+    """
+    Get sample loan data for testing and demonstration.
+    Returns data in the expected format for fraud analysis.
+    """
+    try:
+        df = generate_sample_data(num_loans=num_rows, fraud_rate=fraud_rate)
+
+        # Convert to JSON-friendly format
+        data = df.to_dict(orient='records')
+
+        # Convert datetime objects
+        for row in data:
+            for key, value in row.items():
+                if isinstance(value, (pd.Timestamp, datetime)):
+                    row[key] = value.isoformat()
+                elif pd.isna(value):
+                    row[key] = None
+
+        return {
+            "status": "success",
+            "total_rows": len(data),
+            "fraud_rate": fraud_rate,
+            "columns": list(df.columns),
+            "data": data,
+            "fraud_summary": {
+                "total_fraud": int(df['is_fraud'].sum()),
+                "fraud_types": df[df['is_fraud']]['fraud_type'].value_counts().to_dict()
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/v1/column-mappings/standard-fields")
+async def get_standard_fields():
+    """
+    Get list of standard fields that FraudShield recognizes.
+    Useful for building column mapping UIs.
+    """
+    return {
+        "standard_fields": SmartColumnMapper.STANDARD_FIELDS,
+        "name_variations": SmartColumnMapper.NAME_VARIATIONS,
+        "required_fields": ['borrower_id', 'amount'],
+        "recommended_fields": ['loan_id', 'phone', 'officer_id', 'loan_date', 'borrower_name']
+    }
 
 
 # ============================================
