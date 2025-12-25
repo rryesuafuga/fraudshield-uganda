@@ -53,11 +53,28 @@ Supported column name variations:
 
 ## Deployment
 
-### Static Hosting (Frontend Only)
-Deploy the `mvp` folder to any static hosting:
-- **Netlify**: Drag & drop the folder
-- **Vercel**: Connect GitHub repository
-- **GitHub Pages**: Enable in repository settings
+### Netlify (Recommended)
+1. Drag & drop the `mvp` folder to [netlify.com/drop](https://netlify.com/drop)
+2. Or connect GitHub and set publish directory to `mvp`
+3. Configuration is in `netlify.toml`
+
+### Vercel
+1. Install Vercel CLI: `npm i -g vercel`
+2. Navigate to mvp folder: `cd mvp`
+3. Deploy: `vercel`
+4. Or connect GitHub repository at [vercel.com](https://vercel.com)
+5. Set root directory to `mvp`
+6. Configuration is in `vercel.json`
+
+**Vercel Features:**
+- Free tier: Unlimited personal projects
+- Automatic HTTPS & global CDN
+- Preview deployments for PRs
+
+### GitHub Pages
+1. Go to repository Settings → Pages
+2. Set source to main branch, folder `/mvp`
+3. Save and wait for deployment
 
 ### Full Stack (with Backend)
 1. Deploy backend to Railway, Render, or AWS
