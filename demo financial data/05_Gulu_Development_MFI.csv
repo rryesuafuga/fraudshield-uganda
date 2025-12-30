@@ -1,0 +1,66 @@
+loanId,clientId,Client Name,telephone,loan_amount,Disbursement Date,time,approvedBy,branch location,Status
+GDM0001,GC9418,Isaac Karungi,070-500-9303,2440000,22-Nov-24,11:39,Officer A,Bardege,disbursed
+GDM0002,GC9530,George Nabirye,077-490-5308,7120000,31-Jul-24,12:04,Officer A,Bardege,closed
+GDM0003,GC3896,Andrew Nabirye,072-313-6333,8370000,12-Oct-24,13:23,Officer D,Bardege,active
+GDM0004,GC2201,Joseph Wasswa,078-274-8357,1900000,25-May-24,13:05,Officer D,Pece,disbursed
+GDM0005,GC3706,Faith Ssempala,078-161-0859,8120000,06-Jun-24,13:15,Officer D,Bardege,disbursed
+GDM0006,GC1303,Michael Adong,078-671-8132,2620000,17-Jul-24,17:43,Officer C,Gulu Main,closed
+GDM0007,GC5655,Moses Tusiime,077-019-2582,3690000,03-Oct-24,13:01,Officer A,Layibi,active
+GDM0008,GC4844,Robert Akello,074-766-9912,5020000,15-Jul-24,13:06,Officer A,Gulu Main,defaulted
+GDM0009,GC9945,Charles Wasswa,072-632-9626,2070000,03-Aug-24,08:02,Officer A,Bardege,defaulted
+GDM0010,GC9574,Joseph Nabirye,072-414-2462,9920000,16-Feb-24,13:02,Officer A,Bardege,defaulted
+GDM0011,GC9673,Margaret Atuhaire,078-681-4681,3390000,07-Mar-24,13:07,Officer C,Layibi,active
+GDM0012,GC4346,Grace Tusiime,074-700-0459,1070000,14-Jun-24,15:13,Officer A,Pece,disbursed
+GDM0013,GC1553,Charity Mbabazi,077-793-1301,550000,07-Dec-24,17:30,Officer A,Gulu Main,defaulted
+GDM0014,GC6846,Jane Kato,079-339-5293,8270000,05-Nov-24,12:21,Officer A,Layibi,disbursed
+GDM0015,GC6253,Esther Nakato,071-254-2077,6830000,06-Jan-24,08:49,Officer C,Pece,disbursed
+GDM0016,GC2246,Emmanuel Kyomuhendo,071-395-2728,3080000,19-Oct-24,17:34,Officer C,Pece,active
+GDM0017,GC9002,Robert Naturinda,079-691-5377,4670000,16-May-24,13:45,Officer B,Gulu Main,disbursed
+GDM0018,GC7818,Isaac Kyomuhendo,075-280-1228,9540000,06-Jan-24,11:23,Officer D,Pece,disbursed
+GDM0019,GC4145,Patience Opolot,070-320-8198,8270000,23-Jan-24,17:12,Officer C,Pece,closed
+GDM0020,GC7354,Catherine Ssempala,075-404-9103,5870000,01-Jun-24,17:46,Officer C,Gulu Main,defaulted
+GDM0021,GC1541,Margaret Nabirye,078-014-5054,5580000,08-Jan-24,08:00,Officer C,Gulu Main,closed
+GDM0022,GC3445,Mary Kato,076-035-7585,9030000,01-Sep-24,14:23,Officer A,Bardege,disbursed
+GDM0023,GC5502,Catherine Ssempala,071-376-6057,8330000,27-Jul-24,17:19,Officer B,Layibi,active
+GDM0024,GC1541,David Tusiime,070-005-1176,4310000,16-Aug-24,16:40,Officer C,Bardege,disbursed
+GDM0025,GC5164,Samuel Tumusiime,071-770-1678,890000,09-May-24,08:55,Officer C,Gulu Main,defaulted
+GDM0026,GC2048,Patrick Adong,079-626-5890,8640000,23-Mar-24,17:41,Officer A,Pece,closed
+GDM0027,GC2423,Benjamin Nabirye,075-982-8475,2520000,27-Oct-24,16:07,Officer D,Gulu Main,disbursed
+GDM0028,GC9455,Esther Nakato,077-666-0952,1180000,20-Jul-24,16:16,Officer B,Gulu Main,closed
+GDM0029,GC2931,Peter Wasswa,078-659-0405,4460000,08-Dec-24,09:26,Officer A,Pece,disbursed
+GDM0030,GC2134,Catherine Nantume,074-510-9307,4790000,23-Feb-24,11:41,Officer A,Bardege,active
+GDM0031,GC2693,Patrick Adong,076-838-5513,8170000,14-Mar-24,17:48,Officer A,Bardege,active
+GDM0032,GC9970,Dorothy Ainomugisha,076-281-6687,6790000,21-Sep-24,13:57,Officer D,Gulu Main,closed
+GDM0033,GC8569,Emmanuel Wasswa,074-139-1092,7440000,28-Aug-24,10:21,Officer C,Gulu Main,disbursed
+GDM0034,GC4368,Charles Amongin,077-325-9275,5570000,27-Apr-24,11:15,Officer D,Bardege,active
+GDM0035,GC9707,Joseph Adong,079-208-2237,3840000,23-Sep-24,08:57,Officer C,Bardege,active
+GDM0036,GC9719,Emmanuel Ainomugisha,079-379-0338,5000000,07-Dec-24,11:37,Officer A,Pece,disbursed
+GDM0037,GC4096,David Mugisha,075-787-1036,6640000,12-Oct-24,13:20,Officer D,Pece,disbursed
+GDM0038,GC2411,Mercy Adong,076-180-5330,3720000,12-Apr-24,13:04,Officer C,Gulu Main,active
+GDM0039,GC3345,Francis Mwesigwa,076-217-1956,5030000,14-Oct-24,08:44,Officer C,Pece,active
+GDM0040,GC9610,Agnes Kyomuhendo,076-647-8063,240000,05-Jul-24,13:21,Officer A,Layibi,disbursed
+GDM0041,GC9073,Charity Atuhaire,076-199-4574,4940000,16-Jun-24,13:14,Officer B,Gulu Main,closed
+GDM0042,GC6542,Catherine Nalwanga,072-721-5838,7140000,22-Jul-24,12:30,Officer C,Bardege,defaulted
+GDM0043,GC7592,Isaac Naturinda,079-915-0158,5060000,10-May-24,12:11,Officer A,Pece,defaulted
+GDM0044,GC4071,Sarah Tusiime,078-144-6398,4370000,07-Oct-24,16:31,Officer C,Layibi,closed
+GDM0045,GC1978,Hope Ssempala,077-278-5454,8190000,30-Jul-24,09:06,Officer A,Gulu Main,active
+GDM0046,GC6813,James Ainomugisha,071-831-3820,6020000,04-Oct-24,16:58,Officer A,Layibi,closed
+GDM0047,GC9091,Patrick Tumusiime,070-401-4496,2950000,31-Mar-24,11:23,Officer A,Layibi,closed
+GDM0048,GC5068,George Mwesigwa,077-865-2778,3080000,01-Apr-24,14:47,Officer C,Pece,active
+GDM0049,GC8514,David Tumusiime,076-257-0370,7770000,30-Jan-24,15:09,Officer D,Layibi,disbursed
+GDM0050,GC7938,Patience Kyomuhendo,076-758-7728,2820000,29-Apr-24,10:46,Officer D,Pece,closed
+GDM0051,GC2860,Rebecca Mukasa,074-161-0223,620000,04-Aug-24,09:44,Officer A,Bardege,active
+GDM0052,GC6530,Faith Akello,078-773-2895,6210000,13-Aug-24,10:41,Officer B,Gulu Main,active
+GDM0053,GC4607,Esther Opio,078-858-2606,4130000,04-Jun-24,12:01,Officer D,Layibi,active
+GDM0054,GC9095,Agnes Tusiime,078-069-2839,5760000,01-Sep-24,15:14,Officer B,Gulu Main,active
+GDM0055,GC4711,David Nambi,078-276-4718,9710000,05-Jul-24,16:20,Officer C,Pece,defaulted
+GDM0056,GC5143,James Opolot,070-587-8561,1590000,17-Sep-24,09:41,Officer B,Pece,closed
+GDM0057,GC3889,Joyce Katusiime,071-588-7823,4520000,15-Jul-24,17:10,Officer C,Bardege,defaulted
+GDM0058,GC6631,Mercy Kato,078-115-1521,3560000,24-Nov-24,08:37,Officer A,Bardege,defaulted
+GDM0059,GC9031,Solomon Ssempala,077-000-0062,320000,22-Jul-24,16:20,Officer C,Bardege,disbursed
+GDM0060,GC1069,Rebecca Nabirye,070-571-6470,8570000,22-Sep-24,09:46,Officer C,Gulu Main,closed
+GDM0061,GC9000,Hope Mukasa,070-123-4567,1687132,20-Nov-24,10:30,Officer B,Gulu Main,disbursed
+GDM0062,GC9001,Mercy Nantume,070-123-4567,860084,20-Nov-24,10:30,Officer B,Gulu Main,disbursed
+GDM0063,GC9002,Moses Byarugaba,070-123-4567,1738306,20-Nov-24,10:30,Officer B,Gulu Main,disbursed
+GDM0064,GC8888,Midnight Loan Client,079-888-7777,4000000,19-Nov-24,01:30,Officer C,Pece,disbursed
+GDM0065,GC7777,Huge Loan Person,077-666-5555,80000000,21-Nov-24,09:00,Officer A,Gulu Main,disbursed
