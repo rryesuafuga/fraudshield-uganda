@@ -521,15 +521,85 @@
             renderDataPreview();
         }
 
+        // Data type validators for each field type
+        const DATA_TYPE_VALIDATORS = {
+            phone: (sample) => {
+                const phonePatterns = [/^(\+?256|0)?[0-9]{9,12}$/, /^07[0-9]{8}$/, /^\+?[0-9]{10,15}$/];
+                const matches = sample.filter(v => phonePatterns.some(p => p.test(String(v).replace(/[\s\-()]/g, '')))).length;
+                return matches / sample.length > 0.5;
+            },
+            national_id: (sample) => {
+                const ninPatterns = [/^[A-Z]{2}\d{13}[A-Z0-9]$/i, /^\d{14}$/];
+                const matches = sample.filter(v => ninPatterns.some(p => p.test(String(v).replace(/[\s\-]/g, '')))).length;
+                return matches / sample.length > 0.5;
+            },
+            amount: (sample) => {
+                const matches = sample.filter(v => !isNaN(parseFloat(String(v).replace(/,/g, '')))).length;
+                return matches / sample.length > 0.8;
+            },
+            loan_date: (sample) => {
+                const datePatterns = [/^\d{4}-\d{2}-\d{2}$/, /^\d{2}[\/\-]\d{2}[\/\-]\d{4}$/];
+                const matches = sample.filter(v => datePatterns.some(p => p.test(String(v)))).length;
+                return matches / sample.length > 0.5;
+            },
+            approval_time: (sample) => {
+                const timePattern = /^\d{2}:\d{2}(:\d{2})?$/;
+                const matches = sample.filter(v => timePattern.test(String(v))).length;
+                return matches / sample.length > 0.5;
+            },
+            status: (sample) => {
+                const statusKeywords = ['active', 'inactive', 'paid', 'closed', 'pending', 'approved', 'rejected', 'defaulted', 'completed', 'disbursed'];
+                const matches = sample.filter(v => statusKeywords.includes(String(v).toLowerCase().trim())).length;
+                return matches / sample.length > 0.3;
+            },
+            interest_rate: (sample) => {
+                const numericSample = sample.map(v => parseFloat(String(v).replace(/,/g, ''))).filter(n => !isNaN(n));
+                if (numericSample.length < sample.length * 0.8) return false;
+                const max = Math.max(...numericSample);
+                return max <= 100; // Interest rates should be <= 100%
+            }
+        };
+
         function detectColumnMappings(data) {
             const columns = Object.keys(data[0] || {});
-            const mappings = {};
+            const allDetections = [];
 
+            // Step 1: Detect all possible mappings for each column
             columns.forEach(col => {
                 const detection = detectColumnType(col, data);
                 if (detection) {
-                    mappings[col] = detection;
+                    allDetections.push({
+                        originalCol: col,
+                        ...detection
+                    });
                 }
+            });
+
+            // Step 2: Resolve conflicts - if multiple columns map to same field, keep highest confidence
+            const mappings = {};
+            const usedFields = new Set();
+
+            // Sort by confidence descending
+            allDetections.sort((a, b) => b.confidence - a.confidence);
+
+            allDetections.forEach(detection => {
+                // Skip if this standard field is already assigned
+                if (usedFields.has(detection.field)) {
+                    // Try to find alternative mapping for this column
+                    return;
+                }
+
+                // Skip if this original column is already mapped
+                if (mappings[detection.originalCol]) {
+                    return;
+                }
+
+                mappings[detection.originalCol] = {
+                    field: detection.field,
+                    confidence: detection.confidence,
+                    method: detection.method
+                };
+                usedFields.add(detection.field);
             });
 
             return mappings;
@@ -548,11 +618,24 @@
                 for (const variation of variations) {
                     // Exact match
                     if (colLower === variation) {
-                        return { field: standardField, confidence: 100, method: 'exact_match' };
+                        // Validate data type if validator exists
+                        const validator = DATA_TYPE_VALIDATORS[standardField];
+                        if (!validator || validator(sample)) {
+                            return { field: standardField, confidence: 100, method: 'exact_match' };
+                        } else {
+                            // Name matches but data doesn't - lower confidence
+                            if (95 > bestScore) {
+                                bestScore = 70; // Lower confidence due to type mismatch
+                                bestMatch = standardField;
+                                detectionMethod = 'name_match';
+                            }
+                        }
                     }
                     // Contains
                     if (colLower.includes(variation) || variation.includes(colLower)) {
-                        const score = 85;
+                        const validator = DATA_TYPE_VALIDATORS[standardField];
+                        const typeValid = !validator || validator(sample);
+                        const score = typeValid ? 85 : 60;
                         if (score > bestScore) {
                             bestScore = score;
                             bestMatch = standardField;
@@ -561,31 +644,40 @@
                     }
                     // Fuzzy match
                     const similarity = stringSimilarity(colLower, variation);
-                    if (similarity > 0.7 && similarity * 100 > bestScore) {
-                        bestScore = similarity * 100;
-                        bestMatch = standardField;
-                        detectionMethod = 'fuzzy_match';
+                    if (similarity > 0.7) {
+                        const validator = DATA_TYPE_VALIDATORS[standardField];
+                        const typeValid = !validator || validator(sample);
+                        const score = (similarity * 100) * (typeValid ? 1 : 0.7);
+                        if (score > bestScore) {
+                            bestScore = score;
+                            bestMatch = standardField;
+                            detectionMethod = 'fuzzy_match';
+                        }
                     }
                 }
             }
 
-            // Method 2: Content pattern detection
+            // Method 2: Content pattern detection (prioritize for certain fields)
             if (sample.length > 0) {
                 const patternMatch = detectByPattern(sample);
-                if (patternMatch && patternMatch.confidence > bestScore) {
-                    bestScore = patternMatch.confidence;
-                    bestMatch = patternMatch.field;
-                    detectionMethod = 'pattern';
+                if (patternMatch) {
+                    // Pattern detection is very reliable - boost confidence
+                    const boostedConfidence = patternMatch.confidence + 5;
+                    if (boostedConfidence > bestScore) {
+                        bestScore = boostedConfidence;
+                        bestMatch = patternMatch.field;
+                        detectionMethod = 'pattern';
+                    }
                 }
             }
 
-            // Method 3: Statistical detection
+            // Method 3: Statistical detection (fallback)
             if (!bestMatch && sample.length > 0) {
                 const statMatch = detectByStatistics(sample, colName);
                 if (statMatch) {
                     bestScore = statMatch.confidence;
                     bestMatch = statMatch.field;
-                    detectionMethod = 'statistics';
+                    detectionMethod = statMatch.method || 'statistics';
                 }
             }
 
