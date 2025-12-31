@@ -521,15 +521,146 @@
             renderDataPreview();
         }
 
+        // Data type validators for each field type
+        // Made flexible to handle international data, not just Uganda-specific
+        const DATA_TYPE_VALIDATORS = {
+            phone: (sample) => {
+                // Accept any numeric string 7-15 digits (international phone numbers vary widely)
+                // Also accept common formats with +, spaces, dashes, parentheses
+                const phonePatterns = [
+                    /^[\d\s\-\+\(\)]{7,20}$/,     // General phone pattern
+                    /^\+?[\d]{7,15}$/,             // International format
+                    /^0[\d]{8,10}$/,               // Local format (various countries)
+                ];
+                const matches = sample.filter(v => {
+                    const cleaned = String(v).replace(/[\s\-\(\)]/g, '');
+                    return phonePatterns.some(p => p.test(cleaned)) && /\d{7,}/.test(cleaned);
+                }).length;
+                return matches / sample.length > 0.4; // Lowered threshold
+            },
+            national_id: (sample) => {
+                // Accept various ID formats: alphanumeric, 6-20 characters
+                // This covers Uganda NIN, passports, other national IDs
+                const idPatterns = [
+                    /^[A-Z]{1,3}[\d]{6,14}[A-Z0-9]*$/i,  // Letter prefix + numbers (Uganda, etc.)
+                    /^[\d]{6,14}$/,                        // Numeric only (various countries)
+                    /^[A-Z0-9]{6,20}$/i,                   // Alphanumeric (passports, etc.)
+                ];
+                const matches = sample.filter(v => {
+                    const cleaned = String(v).replace(/[\s\-]/g, '');
+                    return idPatterns.some(p => p.test(cleaned)) && cleaned.length >= 6;
+                }).length;
+                return matches / sample.length > 0.4; // Lowered threshold
+            },
+            amount: (sample) => {
+                // Check if mostly numeric (allowing commas, decimals, currency symbols)
+                const matches = sample.filter(v => {
+                    const cleaned = String(v).replace(/[,\s\$€£¥UGX]/gi, '');
+                    return !isNaN(parseFloat(cleaned)) && parseFloat(cleaned) >= 0;
+                }).length;
+                return matches / sample.length > 0.6; // Lowered from 0.8
+            },
+            loan_date: (sample) => {
+                // Accept various date formats
+                const datePatterns = [
+                    /^\d{4}[-\/]\d{1,2}[-\/]\d{1,2}$/,     // YYYY-MM-DD or YYYY/MM/DD
+                    /^\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4}$/,   // DD/MM/YYYY or MM/DD/YYYY
+                    /^\d{1,2}\s+\w+\s+\d{2,4}$/,           // 15 Jan 2024
+                    /^\w+\s+\d{1,2},?\s+\d{2,4}$/,         // Jan 15, 2024
+                ];
+                const matches = sample.filter(v => datePatterns.some(p => p.test(String(v).trim()))).length;
+                return matches / sample.length > 0.4; // Lowered threshold
+            },
+            approval_time: (sample) => {
+                // Accept time formats: HH:MM, HH:MM:SS, with optional AM/PM
+                const timePatterns = [
+                    /^\d{1,2}:\d{2}(:\d{2})?$/,            // HH:MM or HH:MM:SS
+                    /^\d{1,2}:\d{2}\s*(AM|PM)$/i,          // 12-hour format
+                ];
+                const matches = sample.filter(v => timePatterns.some(p => p.test(String(v).trim()))).length;
+                return matches / sample.length > 0.4; // Lowered threshold
+            },
+            status: (sample) => {
+                // Common loan status keywords (expanded list)
+                const statusKeywords = [
+                    'active', 'inactive', 'paid', 'closed', 'pending', 'approved',
+                    'rejected', 'defaulted', 'completed', 'disbursed', 'overdue',
+                    'written_off', 'cancelled', 'processing', 'draft', 'submitted',
+                    'open', 'settled', 'delinquent', 'current', 'past_due'
+                ];
+                const matches = sample.filter(v => {
+                    const lower = String(v).toLowerCase().trim().replace(/[\s_-]/g, '_');
+                    return statusKeywords.some(kw => lower.includes(kw) || kw.includes(lower));
+                }).length;
+                return matches / sample.length > 0.25; // Very flexible for status
+            },
+            interest_rate: (sample) => {
+                // Interest rates: typically 0-100% but could be decimal (0.05 for 5%)
+                const numericSample = sample.map(v => parseFloat(String(v).replace(/[,%]/g, ''))).filter(n => !isNaN(n));
+                if (numericSample.length < sample.length * 0.6) return false;
+                const max = Math.max(...numericSample);
+                const min = Math.min(...numericSample);
+                // Allow 0-100 for percentages OR 0-1 for decimals
+                return (min >= 0 && max <= 100) || (min >= 0 && max <= 1);
+            },
+            borrower_name: (sample) => {
+                // Names: at least 2 characters, mostly letters/spaces, some punctuation allowed
+                const matches = sample.filter(v => {
+                    const str = String(v).trim();
+                    // Allow letters, spaces, hyphens, apostrophes, periods
+                    return str.length >= 2 && /^[A-Za-z\s\-\'\.\,]+$/.test(str);
+                }).length;
+                return matches / sample.length > 0.5;
+            },
+            branch: (sample) => {
+                // Branches: short-medium strings, some repetition expected
+                const unique = new Set(sample.map(v => String(v).toLowerCase().trim()));
+                const avgLen = sample.reduce((sum, v) => sum + String(v).length, 0) / sample.length;
+                // Branches typically repeat and are reasonably short
+                return unique.size < sample.length * 0.5 && avgLen > 2 && avgLen < 50;
+            }
+        };
+
         function detectColumnMappings(data) {
             const columns = Object.keys(data[0] || {});
-            const mappings = {};
+            const allDetections = [];
 
+            // Step 1: Detect all possible mappings for each column
             columns.forEach(col => {
                 const detection = detectColumnType(col, data);
                 if (detection) {
-                    mappings[col] = detection;
+                    allDetections.push({
+                        originalCol: col,
+                        ...detection
+                    });
                 }
+            });
+
+            // Step 2: Resolve conflicts - if multiple columns map to same field, keep highest confidence
+            const mappings = {};
+            const usedFields = new Set();
+
+            // Sort by confidence descending
+            allDetections.sort((a, b) => b.confidence - a.confidence);
+
+            allDetections.forEach(detection => {
+                // Skip if this standard field is already assigned
+                if (usedFields.has(detection.field)) {
+                    // Try to find alternative mapping for this column
+                    return;
+                }
+
+                // Skip if this original column is already mapped
+                if (mappings[detection.originalCol]) {
+                    return;
+                }
+
+                mappings[detection.originalCol] = {
+                    field: detection.field,
+                    confidence: detection.confidence,
+                    method: detection.method
+                };
+                usedFields.add(detection.field);
             });
 
             return mappings;
@@ -548,11 +679,24 @@
                 for (const variation of variations) {
                     // Exact match
                     if (colLower === variation) {
-                        return { field: standardField, confidence: 100, method: 'exact_match' };
+                        // Validate data type if validator exists
+                        const validator = DATA_TYPE_VALIDATORS[standardField];
+                        if (!validator || validator(sample)) {
+                            return { field: standardField, confidence: 100, method: 'exact_match' };
+                        } else {
+                            // Name matches but data doesn't - lower confidence
+                            if (95 > bestScore) {
+                                bestScore = 70; // Lower confidence due to type mismatch
+                                bestMatch = standardField;
+                                detectionMethod = 'name_match';
+                            }
+                        }
                     }
                     // Contains
                     if (colLower.includes(variation) || variation.includes(colLower)) {
-                        const score = 85;
+                        const validator = DATA_TYPE_VALIDATORS[standardField];
+                        const typeValid = !validator || validator(sample);
+                        const score = typeValid ? 85 : 60;
                         if (score > bestScore) {
                             bestScore = score;
                             bestMatch = standardField;
@@ -561,31 +705,40 @@
                     }
                     // Fuzzy match
                     const similarity = stringSimilarity(colLower, variation);
-                    if (similarity > 0.7 && similarity * 100 > bestScore) {
-                        bestScore = similarity * 100;
-                        bestMatch = standardField;
-                        detectionMethod = 'fuzzy_match';
+                    if (similarity > 0.7) {
+                        const validator = DATA_TYPE_VALIDATORS[standardField];
+                        const typeValid = !validator || validator(sample);
+                        const score = (similarity * 100) * (typeValid ? 1 : 0.7);
+                        if (score > bestScore) {
+                            bestScore = score;
+                            bestMatch = standardField;
+                            detectionMethod = 'fuzzy_match';
+                        }
                     }
                 }
             }
 
-            // Method 2: Content pattern detection
+            // Method 2: Content pattern detection (prioritize for certain fields)
             if (sample.length > 0) {
                 const patternMatch = detectByPattern(sample);
-                if (patternMatch && patternMatch.confidence > bestScore) {
-                    bestScore = patternMatch.confidence;
-                    bestMatch = patternMatch.field;
-                    detectionMethod = 'pattern';
+                if (patternMatch) {
+                    // Pattern detection is very reliable - boost confidence
+                    const boostedConfidence = patternMatch.confidence + 5;
+                    if (boostedConfidence > bestScore) {
+                        bestScore = boostedConfidence;
+                        bestMatch = patternMatch.field;
+                        detectionMethod = 'pattern';
+                    }
                 }
             }
 
-            // Method 3: Statistical detection
+            // Method 3: Statistical detection (fallback)
             if (!bestMatch && sample.length > 0) {
                 const statMatch = detectByStatistics(sample, colName);
                 if (statMatch) {
                     bestScore = statMatch.confidence;
                     bestMatch = statMatch.field;
-                    detectionMethod = 'statistics';
+                    detectionMethod = statMatch.method || 'statistics';
                 }
             }
 
