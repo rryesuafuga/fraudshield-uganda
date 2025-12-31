@@ -53,3 +53,6 @@ htmlcov/
 *.h5
 *.pt
 *.pth
+*.onnx
+*.safetensors
+models/downloaded/
