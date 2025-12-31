@@ -100,7 +100,7 @@ Supported column name variations:
 
 - **Email**: sseguya256@gmail.com
 - **Phone**: +256 784 902 753
-- **Website**: fraudshield-uganda.netlify.app
+- **Website**: fraudshield-uganda.vercel.app
 
 ---
 

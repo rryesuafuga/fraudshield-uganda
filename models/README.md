@@ -154,7 +154,7 @@ To add new models:
 ## Support
 
 - **Email**: sseguya256@gmail.com
-- **Website**: [fraudshield-uganda.netlify.app](https://fraudshield-uganda.netlify.app)
+- **Website**: [fraudshield-uganda.vercel.app](https://fraudshield-uganda.vercel.app)
 
 ---
 
