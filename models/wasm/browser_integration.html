@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FraudShield Uganda - Browser ML Demo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
+</head>
+<body class="bg-slate-900 text-white min-h-screen">
+    <div class="max-w-4xl mx-auto p-6">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-emerald-400">FraudShield Uganda</h1>
+            <p class="text-slate-400 mt-2">Browser-Based ML Fraud Detection Demo</p>
+            <div id="runtime-info" class="mt-4 text-sm">
+                <span id="backend-status" class="px-3 py-1 rounded-full bg-slate-700">Detecting runtime...</span>
+            </div>
+        </header>
+
+        <!-- Model Loading -->
+        <section class="bg-slate-800 rounded-lg p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4">1. Load Model</h2>
+            <div class="flex gap-4 flex-wrap">
+                <button onclick="loadModel('hazelcast')"
+                        class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg">
+                    Load Hazelcast LightGBM
+                </button>
+                <button onclick="loadModel('demo')"
+                        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg">
+                    Load Demo Model
+                </button>
+            </div>
+            <div id="model-status" class="mt-4 text-slate-400">
+                No model loaded
+            </div>
+        </section>
+
+        <!-- Transaction Input -->
+        <section class="bg-slate-800 rounded-lg p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4">2. Enter Transaction</h2>
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-sm text-slate-400 mb-1">Amount (UGX)</label>
+                    <input type="number" id="amount" value="500000"
+                           class="w-full bg-slate-700 rounded px-3 py-2">
+                </div>
+                <div>
+                    <label class="block text-sm text-slate-400 mb-1">Time</label>
+                    <input type="time" id="time" value="14:30"
+                           class="w-full bg-slate-700 rounded px-3 py-2">
+                </div>
+                <div>
+                    <label class="block text-sm text-slate-400 mb-1">Day of Week</label>
+                    <select id="dayOfWeek" class="w-full bg-slate-700 rounded px-3 py-2">
+                        <option value="0">Monday</option>
+                        <option value="1">Tuesday</option>
+                        <option value="2" selected>Wednesday</option>
+                        <option value="3">Thursday</option>
+                        <option value="4">Friday</option>
+                        <option value="5">Saturday</option>
+                        <option value="6">Sunday</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm text-slate-400 mb-1">Customer Age (days)</label>
+                    <input type="number" id="customerAge" value="365"
+                           class="w-full bg-slate-700 rounded px-3 py-2">
+                </div>
+                <div>
+                    <label class="block text-sm text-slate-400 mb-1">Transactions (30d)</label>
+                    <input type="number" id="txCount30d" value="15"
+                           class="w-full bg-slate-700 rounded px-3 py-2">
+                </div>
+                <div>
+                    <label class="block text-sm text-slate-400 mb-1">Avg Amount (30d)</label>
+                    <input type="number" id="avgAmount30d" value="300000"
+                           class="w-full bg-slate-700 rounded px-3 py-2">
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <label class="flex items-center gap-2">
+                    <input type="checkbox" id="isAfterHours" class="rounded">
+                    <span class="text-sm text-slate-400">After business hours</span>
+                </label>
+            </div>
+        </section>
+
+        <!-- Prediction -->
+        <section class="bg-slate-800 rounded-lg p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4">3. Run Prediction</h2>
+            <button onclick="predict()"
+                    class="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 rounded-lg font-semibold">
+                Detect Fraud
+            </button>
+            <div id="prediction-result" class="mt-4 hidden">
+                <div class="grid grid-cols-3 gap-4 text-center">
+                    <div class="bg-slate-700 rounded-lg p-4">
+                        <div class="text-sm text-slate-400">Fraud Score</div>
+                        <div id="fraud-score" class="text-3xl font-bold text-emerald-400">-</div>
+                    </div>
+                    <div class="bg-slate-700 rounded-lg p-4">
+                        <div class="text-sm text-slate-400">Risk Level</div>
+                        <div id="risk-level" class="text-3xl font-bold">-</div>
+                    </div>
+                    <div class="bg-slate-700 rounded-lg p-4">
+                        <div class="text-sm text-slate-400">Inference Time</div>
+                        <div id="inference-time" class="text-3xl font-bold text-blue-400">-</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Benchmark -->
+        <section class="bg-slate-800 rounded-lg p-6">
+            <h2 class="text-xl font-semibold mb-4">4. Benchmark</h2>
+            <button onclick="runBenchmark()"
+                    class="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg">
+                Run 1000 Predictions
+            </button>
+            <div id="benchmark-result" class="mt-4 text-slate-400">
+                Click to benchmark inference speed
+            </div>
+        </section>
+
+        <footer class="mt-8 text-center text-sm text-slate-500">
+            <p>FraudShield Uganda - Browser ML Demo</p>
+            <p class="mt-1">All inference runs locally in your browser - no data sent to servers</p>
+        </footer>
+    </div>
+
+    <script>
+        let session = null;
+        let modelLoaded = false;
+
+        // Detect WebGPU support
+        async function detectRuntime() {
+            const statusEl = document.getElementById('backend-status');
+            const hasWebGPU = !!navigator.gpu;
+
+            if (hasWebGPU) {
+                statusEl.textContent = '✓ WebGPU Available';
+                statusEl.className = 'px-3 py-1 rounded-full bg-emerald-600';
+            } else {
+                statusEl.textContent = '⚡ WASM Mode (CPU)';
+                statusEl.className = 'px-3 py-1 rounded-full bg-blue-600';
+            }
+
+            return hasWebGPU ? 'webgpu' : 'wasm';
+        }
+
+        // Load ONNX model
+        async function loadModel(modelType) {
+            const statusEl = document.getElementById('model-status');
+            statusEl.textContent = 'Loading model...';
+            statusEl.className = 'mt-4 text-yellow-400';
+
+            try {
+                const backend = await detectRuntime();
+
+                // For demo, create a simple model or load from URL
+                if (modelType === 'demo') {
+                    // Create mock session for demo
+                    session = {
+                        run: async (inputs) => {
+                            // Simple fraud scoring based on features
+                            const features = inputs.input.data;
+                            const amount = features[0];
+                            const amountRatio = features[1];
+                            const hour = features[2];
+                            const isAfterHours = features[5];
+
+                            // Mock scoring logic
+                            let score = 0.1;
+                            if (amountRatio > 3) score += 0.3;
+                            if (hour < 6 || hour > 22) score += 0.2;
+                            if (isAfterHours > 0) score += 0.15;
+                            if (amount > 5000000) score += 0.25;
+
+                            score = Math.min(score, 0.99);
+
+                            return {
+                                output: { data: [score] }
+                            };
+                        }
+                    };
+                    modelLoaded = true;
+                    statusEl.textContent = '✓ Demo model loaded (simulated)';
+                    statusEl.className = 'mt-4 text-emerald-400';
+                } else {
+                    // Load actual ONNX model
+                    const modelUrl = modelType === 'hazelcast'
+                        ? 'https://raw.githubusercontent.com/hazelcast/fraud-detection-onnx/main/model/fraud_model.onnx'
+                        : 'fraud_model.onnx';
+
+                    session = await ort.InferenceSession.create(modelUrl, {
+                        executionProviders: [backend]
+                    });
+                    modelLoaded = true;
+                    statusEl.textContent = `✓ Model loaded (${backend} backend)`;
+                    statusEl.className = 'mt-4 text-emerald-400';
+                }
+            } catch (error) {
+                statusEl.textContent = `Error: ${error.message}`;
+                statusEl.className = 'mt-4 text-red-400';
+                console.error('Model load error:', error);
+            }
+        }
+
+        // Extract features from form
+        function extractFeatures() {
+            const amount = parseFloat(document.getElementById('amount').value);
+            const avgAmount30d = parseFloat(document.getElementById('avgAmount30d').value);
+            const time = document.getElementById('time').value;
+            const hour = parseInt(time.split(':')[0]);
+            const dayOfWeek = parseInt(document.getElementById('dayOfWeek').value);
+            const customerAge = parseFloat(document.getElementById('customerAge').value);
+            const txCount30d = parseFloat(document.getElementById('txCount30d').value);
+            const isAfterHours = document.getElementById('isAfterHours').checked ? 1 : 0;
+            const isWeekend = dayOfWeek >= 5 ? 1 : 0;
+
+            return new Float32Array([
+                amount,                          // 0: Amount
+                amount / avgAmount30d,           // 1: Amount ratio
+                hour,                            // 2: Hour
+                dayOfWeek,                       // 3: Day of week
+                isWeekend,                       // 4: Is weekend
+                isAfterHours,                    // 5: After hours
+                customerAge,                     // 6: Customer age
+                txCount30d,                      // 7: Transaction count
+                avgAmount30d,                    // 8: Avg amount 30d
+                0,                               // 9: Merchant category
+                1,                               // 10: Same device
+                0,                               // 11: Distance
+                60,                              // 12: Time since prev
+                0,                               // 13: Failed attempts
+                5                                // 14: Unique merchants
+            ]);
+        }
+
+        // Run prediction
+        async function predict() {
+            if (!modelLoaded) {
+                alert('Please load a model first');
+                return;
+            }
+
+            const features = extractFeatures();
+            const input = new ort.Tensor('float32', features, [1, 15]);
+
+            const startTime = performance.now();
+            const results = await session.run({ input: input });
+            const endTime = performance.now();
+
+            const score = results.output.data[0];
+            const riskLevel = score > 0.7 ? 'HIGH' : score > 0.4 ? 'MEDIUM' : 'LOW';
+            const riskColor = score > 0.7 ? 'text-red-400' : score > 0.4 ? 'text-yellow-400' : 'text-emerald-400';
+
+            document.getElementById('fraud-score').textContent = (score * 100).toFixed(1) + '%';
+            document.getElementById('risk-level').textContent = riskLevel;
+            document.getElementById('risk-level').className = `text-3xl font-bold ${riskColor}`;
+            document.getElementById('inference-time').textContent = (endTime - startTime).toFixed(2) + 'ms';
+            document.getElementById('prediction-result').classList.remove('hidden');
+        }
+
+        // Run benchmark
+        async function runBenchmark() {
+            if (!modelLoaded) {
+                alert('Please load a model first');
+                return;
+            }
+
+            const resultEl = document.getElementById('benchmark-result');
+            resultEl.textContent = 'Running benchmark...';
+            resultEl.className = 'mt-4 text-yellow-400';
+
+            const iterations = 1000;
+            const features = extractFeatures();
+            const input = new ort.Tensor('float32', features, [1, 15]);
+
+            const startTime = performance.now();
+            for (let i = 0; i < iterations; i++) {
+                await session.run({ input: input });
+            }
+            const endTime = performance.now();
+
+            const totalTime = endTime - startTime;
+            const avgTime = totalTime / iterations;
+            const throughput = (iterations / totalTime) * 1000;
+
+            resultEl.innerHTML = `
+                <div class="grid grid-cols-3 gap-4 text-center">
+                    <div>
+                        <div class="text-2xl font-bold text-emerald-400">${avgTime.toFixed(3)}ms</div>
+                        <div class="text-sm">Avg per prediction</div>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-bold text-blue-400">${throughput.toFixed(0)}</div>
+                        <div class="text-sm">Predictions/second</div>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-bold text-purple-400">${totalTime.toFixed(0)}ms</div>
+                        <div class="text-sm">Total (${iterations} runs)</div>
+                    </div>
+                </div>
+            `;
+            resultEl.className = 'mt-4';
+        }
+
+        // Initialize
+        detectRuntime();
+    </script>
+</body>
+</html>
