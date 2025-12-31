@@ -79,6 +79,109 @@ MODELS = {
         "size": "~200MB",
         "requirements": ["onnxruntime"],
     },
+    # ===== WASM/WebGPU Browser Models =====
+    "ibm-fraud-onnx": {
+        "name": "IBM ai-on-z Fraud Detection (ONNX)",
+        "source": "github",
+        "repo_url": "https://github.com/IBM/ai-on-z-fraud-detection",
+        "description": "LSTM/GRU models for credit card fraud, ONNX format for browser deployment",
+        "size": "~100MB",
+        "requirements": ["onnxruntime"],
+        "wasm_compatible": True,
+        "input_shape": "(7, 16, 220)",
+    },
+    "hazelcast-fraud-onnx": {
+        "name": "Hazelcast LightGBM Fraud (ONNX)",
+        "source": "github",
+        "repo_url": "https://github.com/hazelcast/fraud-detection-onnx",
+        "description": "LightGBM ONNX model with <0.1ms inference, 15 features",
+        "size": "~5MB",
+        "requirements": ["onnxruntime"],
+        "wasm_compatible": True,
+        "input_shape": "(1, 15)",
+    },
+    "vaibhav-fraud-collection": {
+        "name": "Vaibhav Singh Fraud Models (11 models)",
+        "source": "huggingface",
+        "repo_id": "vaibhav07112004/fraud-detection-models",
+        "description": "Collection of 11 specialized fraud models (credit card, QR, e-commerce, etc.)",
+        "size": "~200MB",
+        "requirements": ["scikit-learn", "skl2onnx"],
+        "wasm_compatible": True,
+        "note": "Requires sklearn-onnx conversion for WASM deployment",
+    },
+    "onnx-runtime-web": {
+        "name": "ONNX Runtime Web (npm)",
+        "source": "npm",
+        "package": "onnxruntime-web",
+        "description": "Browser inference engine with WASM/WebGL/WebGPU support",
+        "size": "~15MB",
+        "requirements": [],
+        "wasm_compatible": True,
+    },
+    "tract-rust": {
+        "name": "tract (Rust ONNX Runtime)",
+        "source": "cargo",
+        "package": "tract-onnx",
+        "description": "Pure Rust ONNX inference, compiles to WASM natively",
+        "size": "~5MB",
+        "requirements": [],
+        "wasm_compatible": True,
+    },
+    "candle-wasm": {
+        "name": "candle (HuggingFace Rust)",
+        "source": "github",
+        "repo_url": "https://github.com/huggingface/candle",
+        "description": "Rust ML framework with first-class WASM support, 17k+ stars",
+        "size": "~50MB",
+        "requirements": [],
+        "wasm_compatible": True,
+    },
+    "burn-wgpu": {
+        "name": "burn (Rust WebGPU)",
+        "source": "github",
+        "repo_url": "https://github.com/tracel-ai/burn",
+        "description": "Rust ML with native WebGPU backend, ~2MB WASM output",
+        "size": "~30MB",
+        "requirements": [],
+        "wasm_compatible": True,
+    },
+    "tfjs-webgpu": {
+        "name": "TensorFlow.js WebGPU",
+        "source": "npm",
+        "package": "@tensorflow/tfjs",
+        "description": "TensorFlow.js with WebGPU backend, 3x faster than WebGL",
+        "size": "~20MB",
+        "requirements": [],
+        "wasm_compatible": True,
+    },
+    "smartcore-wasm": {
+        "name": "smartcore (Rust ML for WASM)",
+        "source": "cargo",
+        "package": "smartcore",
+        "description": "Random Forests, SVM, Decision Trees - WASM-first design",
+        "size": "~2MB",
+        "requirements": [],
+        "wasm_compatible": True,
+    },
+    "linfa-rust": {
+        "name": "linfa (Rust scikit-learn)",
+        "source": "github",
+        "repo_url": "https://github.com/rust-ml/linfa",
+        "description": "Rust ML toolkit, 3.4k+ stars, no BLAS dependency for WASM",
+        "size": "~20MB",
+        "requirements": [],
+        "wasm_compatible": True,
+    },
+    "extended-isolation-forest": {
+        "name": "Extended Isolation Forest (Rust)",
+        "source": "cargo",
+        "package": "extended-isolation-forest",
+        "description": "Anomaly detection algorithm in pure Rust, targets WASM directly",
+        "size": "~1MB",
+        "requirements": [],
+        "wasm_compatible": True,
+    },
 }
 
 
@@ -195,6 +298,227 @@ predictions = clf_iforest.predict(X_new)  # 0: normal, 1: anomaly
         return False
 
 
+def download_npm(model_info: dict, target_dir: Path) -> bool:
+    """Install npm package and create usage example."""
+    try:
+        package = model_info["package"]
+        print(f"  NPM Package: {package}")
+        print(f"  Install with: npm install {package}")
+
+        # Create usage example
+        ensure_dir(target_dir)
+        example_file = target_dir / "usage_example.js"
+
+        if "onnxruntime" in package:
+            example_file.write_text('''/**
+ * ONNX Runtime Web Usage Example for FraudShield Uganda
+ *
+ * Installation: npm install onnxruntime-web
+ */
+
+// Browser usage (via script tag or bundler)
+// <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
+
+async function runFraudDetection() {
+    // Load model
+    const session = await ort.InferenceSession.create('fraud_model.onnx', {
+        executionProviders: ['wasm']  // or 'webgpu' for GPU
+    });
+
+    // Prepare features (15 transaction features)
+    const features = new Float32Array([
+        500000,   // amount
+        1.2,      // amount ratio
+        14,       // hour
+        2,        // day of week
+        0,        // is weekend
+        0,        // after hours
+        365,      // customer age
+        15,       // tx count 30d
+        400000,   // avg amount 30d
+        0.2,      // merchant category
+        1,        // same device
+        0,        // distance
+        60,       // minutes since prev
+        0,        // failed attempts
+        5,        // unique merchants
+    ]);
+
+    const input = new ort.Tensor('float32', features, [1, 15]);
+    const results = await session.run({ input: input });
+
+    const fraudScore = results.output.data[0];
+    console.log('Fraud Score:', fraudScore);
+
+    return fraudScore > 0.5 ? 'FRAUD' : 'LEGITIMATE';
+}
+''')
+        elif "tensorflow" in package:
+            example_file.write_text('''/**
+ * TensorFlow.js WebGPU Usage Example for FraudShield Uganda
+ *
+ * Installation: npm install @tensorflow/tfjs @tensorflow/tfjs-backend-webgpu
+ */
+
+import * as tf from '@tensorflow/tfjs';
+import '@tensorflow/tfjs-backend-webgpu';
+
+async function runFraudDetection() {
+    // Use WebGPU backend (3x faster than WebGL)
+    await tf.setBackend('webgpu');
+
+    // Load model
+    const model = await tf.loadLayersModel('fraud_model/model.json');
+
+    // Prepare input
+    const features = tf.tensor2d([[
+        500000, 1.2, 14, 2, 0, 0, 365, 15, 400000, 0.2, 1, 0, 60, 0, 5
+    ]]);
+
+    // Run prediction
+    const prediction = model.predict(features);
+    const fraudScore = prediction.dataSync()[0];
+
+    console.log('Fraud Score:', fraudScore);
+    return fraudScore > 0.5 ? 'FRAUD' : 'LEGITIMATE';
+}
+''')
+
+        print(f"  Created usage example: {example_file}")
+        print(f"  Note: Run 'npm install {package}' in your project directory")
+        return True
+    except Exception as e:
+        print(f"  Error: {e}")
+        return False
+
+
+def download_cargo(model_info: dict, target_dir: Path) -> bool:
+    """Create Cargo.toml and usage example for Rust crate."""
+    try:
+        package = model_info["package"]
+        print(f"  Cargo Crate: {package}")
+        print(f"  Add to Cargo.toml: {package} = \"*\"")
+
+        # Create usage example
+        ensure_dir(target_dir)
+
+        # Create Cargo.toml
+        cargo_file = target_dir / "Cargo.toml"
+        cargo_file.write_text(f'''[package]
+name = "fraudshield-{package.replace("-", "_")}"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+{package} = "*"
+
+# For WASM compilation
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2"
+''')
+
+        # Create usage example
+        example_file = target_dir / "src" / "lib.rs"
+        ensure_dir(target_dir / "src")
+
+        if "isolation" in package.lower():
+            example_file.write_text('''//! Extended Isolation Forest for FraudShield Uganda
+//!
+//! Compile to WASM: cargo build --target wasm32-unknown-unknown --release
+
+use extended_isolation_forest::{Forest, ForestOptions};
+
+pub fn detect_fraud(transaction_features: &[f64]) -> f64 {
+    // Training data (in production, load pre-trained model)
+    let training_data: Vec<Vec<f64>> = vec![
+        // Normal transactions
+        vec![100000.0, 1.0, 10.0, 1.0, 0.0],
+        vec![200000.0, 1.2, 14.0, 3.0, 0.0],
+        // ... more training data
+    ];
+
+    let options = ForestOptions {
+        n_trees: 150,
+        sample_size: 200,
+        max_tree_depth: None,
+        extension_level: 1,
+    };
+
+    let forest = Forest::from_slice(
+        training_data.iter().map(|v| v.as_slice()).collect::<Vec<_>>().as_slice(),
+        &options
+    ).expect("Failed to build forest");
+
+    // Score new transaction (higher = more anomalous)
+    forest.score(transaction_features)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_fraud_detection() {
+        let normal_tx = [150000.0, 1.1, 12.0, 2.0, 0.0];
+        let suspicious_tx = [5000000.0, 10.0, 23.0, 6.0, 1.0];
+
+        let normal_score = detect_fraud(&normal_tx);
+        let suspicious_score = detect_fraud(&suspicious_tx);
+
+        // Suspicious should have higher anomaly score
+        assert!(suspicious_score > normal_score);
+    }
+}
+''')
+        elif "smartcore" in package.lower():
+            example_file.write_text('''//! smartcore Random Forest for FraudShield Uganda
+//!
+//! Compile to WASM: cargo build --target wasm32-wasi --release
+
+use smartcore::ensemble::random_forest_classifier::RandomForestClassifier;
+use smartcore::linalg::basic::matrix::DenseMatrix;
+
+pub fn train_and_predict(
+    training_features: Vec<Vec<f64>>,
+    training_labels: Vec<u32>,
+    new_transaction: Vec<f64>,
+) -> u32 {
+    // Convert to DenseMatrix
+    let x = DenseMatrix::from_2d_vec(&training_features);
+    let y = training_labels;
+
+    // Train Random Forest
+    let model = RandomForestClassifier::fit(
+        &x, &y, Default::default()
+    ).expect("Failed to train model");
+
+    // Predict on new transaction
+    let x_new = DenseMatrix::from_2d_vec(&vec![new_transaction]);
+    let predictions = model.predict(&x_new).expect("Prediction failed");
+
+    predictions[0]  // 0 = legitimate, 1 = fraud
+}
+''')
+        else:
+            example_file.write_text(f'''//! {package} for FraudShield Uganda
+//!
+//! Compile to WASM: cargo build --target wasm32-unknown-unknown --release
+
+// Add your implementation here
+// See crate documentation: https://crates.io/crates/{package}
+''')
+
+        print(f"  Created Cargo.toml and example: {target_dir}")
+        print(f"  To compile to WASM: cd {target_dir} && cargo build --target wasm32-unknown-unknown --release")
+        return True
+    except Exception as e:
+        print(f"  Error: {e}")
+        return False
+
+
 def download_model(model_key: str) -> bool:
     """Download a specific model."""
     if model_key not in MODELS:
@@ -226,6 +550,10 @@ def download_model(model_key: str) -> bool:
         return download_github(model_info, target_dir)
     elif source == "pypi":
         return download_pypi(model_info, target_dir)
+    elif source == "npm":
+        return download_npm(model_info, target_dir)
+    elif source == "cargo":
+        return download_cargo(model_info, target_dir)
     else:
         print(f"  Unknown source type: {source}")
         return False
@@ -236,12 +564,29 @@ def list_models() -> None:
     print("\nAvailable Models for FraudShield Uganda:")
     print("=" * 60)
 
-    for key, info in MODELS.items():
+    # Separate server-side and browser/WASM models
+    server_models = {k: v for k, v in MODELS.items() if not v.get("wasm_compatible")}
+    wasm_models = {k: v for k, v in MODELS.items() if v.get("wasm_compatible")}
+
+    print("\n--- Server-Side Models ---")
+    for key, info in server_models.items():
         status = "Downloaded" if (MODELS_DIR / key).exists() else "Not downloaded"
         print(f"\n  {key}")
         print(f"    Name: {info['name']}")
         print(f"    Description: {info['description']}")
         print(f"    Size: {info['size']}")
+        print(f"    Status: [{status}]")
+
+    print("\n--- Browser/WASM Models ---")
+    for key, info in wasm_models.items():
+        status = "Downloaded" if (MODELS_DIR / key).exists() else "Not downloaded"
+        print(f"\n  {key}")
+        print(f"    Name: {info['name']}")
+        print(f"    Description: {info['description']}")
+        print(f"    Size: {info['size']}")
+        print(f"    Source: {info['source']}")
+        if info.get("input_shape"):
+            print(f"    Input Shape: {info['input_shape']}")
         print(f"    Status: [{status}]")
 
 
@@ -258,7 +603,10 @@ def show_info(model_key: str) -> None:
     print(f"Description: {info['description']}")
     print(f"Source: {info['source']}")
     print(f"Size: {info['size']}")
-    print(f"Requirements: {', '.join(info.get('requirements', []))}")
+
+    reqs = info.get('requirements', [])
+    if reqs:
+        print(f"Requirements: {', '.join(reqs)}")
 
     if info["source"] == "huggingface":
         print(f"HuggingFace Repo: {info['repo_id']}")
@@ -266,6 +614,19 @@ def show_info(model_key: str) -> None:
         print(f"GitHub URL: {info['repo_url']}")
     elif info["source"] == "pypi":
         print(f"PyPI Package: {info['package']}")
+    elif info["source"] == "npm":
+        print(f"NPM Package: {info['package']}")
+    elif info["source"] == "cargo":
+        print(f"Cargo Crate: {info['package']}")
+
+    # WASM/Browser info
+    if info.get("wasm_compatible"):
+        print("\n--- Browser/WASM Info ---")
+        print("WASM Compatible: Yes")
+        if info.get("input_shape"):
+            print(f"Input Shape: {info['input_shape']}")
+        if info.get("note"):
+            print(f"Note: {info['note']}")
 
     target_dir = MODELS_DIR / model_key
     if target_dir.exists():

@@ -232,6 +232,213 @@
                 </div>
             </div>
         </div>
+
+        <!-- WASM/WebGPU ML Demo Section -->
+        <div class="mt-8">
+            <div class="flex items-center space-x-3 mb-4">
+                <div class="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg flex items-center justify-center">
+                    <i data-lucide="cpu" class="h-6 w-6 text-white"></i>
+                </div>
+                <div>
+                    <h2 class="text-xl font-bold">Browser-Based ML Demo</h2>
+                    <p class="text-sm text-slate-400">WebAssembly & WebGPU Fraud Detection (Experimental)</p>
+                </div>
+            </div>
+
+            <div class="grid lg:grid-cols-2 gap-6">
+                <!-- Runtime Detection -->
+                <div class="card rounded-xl overflow-hidden">
+                    <div class="px-4 py-3 border-b border-slate-700/50 flex items-center justify-between">
+                        <h3 class="font-semibold">Runtime Environment</h3>
+                        <span id="wasm-status" class="px-3 py-1 rounded-full text-xs font-medium bg-slate-700">Detecting...</span>
+                    </div>
+                    <div class="p-4 space-y-4">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="bg-slate-800/50 rounded-lg p-3">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-xs text-slate-400">WebAssembly</span>
+                                    <span id="wasm-check" class="text-xs">⏳</span>
+                                </div>
+                                <p class="text-lg font-bold" id="wasm-support">Checking...</p>
+                            </div>
+                            <div class="bg-slate-800/50 rounded-lg p-3">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-xs text-slate-400">WebGPU</span>
+                                    <span id="webgpu-check" class="text-xs">⏳</span>
+                                </div>
+                                <p class="text-lg font-bold" id="webgpu-support">Checking...</p>
+                            </div>
+                            <div class="bg-slate-800/50 rounded-lg p-3">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-xs text-slate-400">SIMD</span>
+                                    <span id="simd-check" class="text-xs">⏳</span>
+                                </div>
+                                <p class="text-lg font-bold" id="simd-support">Checking...</p>
+                            </div>
+                            <div class="bg-slate-800/50 rounded-lg p-3">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-xs text-slate-400">Threads</span>
+                                    <span id="threads-check" class="text-xs">⏳</span>
+                                </div>
+                                <p class="text-lg font-bold" id="threads-support">Checking...</p>
+                            </div>
+                        </div>
+                        <div class="text-xs text-slate-500">
+                            <p><strong>Best Backend:</strong> <span id="best-backend" class="text-emerald-400">Detecting...</span></p>
+                            <p class="mt-1">Models run entirely in your browser - no data sent to servers.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Inference Demo -->
+                <div class="card rounded-xl overflow-hidden">
+                    <div class="px-4 py-3 border-b border-slate-700/50 flex items-center justify-between">
+                        <h3 class="font-semibold">Live Inference Demo</h3>
+                        <span class="detection-badge badge-ml">Simulated Model</span>
+                    </div>
+                    <div class="p-4 space-y-4">
+                        <div class="grid grid-cols-3 gap-3">
+                            <div>
+                                <label class="block text-xs text-slate-400 mb-1">Amount (UGX)</label>
+                                <input type="number" id="demo-amount" value="500000"
+                                       class="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-sm focus:border-emerald-500 focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-400 mb-1">Hour</label>
+                                <input type="number" id="demo-hour" value="14" min="0" max="23"
+                                       class="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-sm focus:border-emerald-500 focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-400 mb-1">Day (0-6)</label>
+                                <input type="number" id="demo-day" value="2" min="0" max="6"
+                                       class="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-sm focus:border-emerald-500 focus:outline-none">
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <input type="checkbox" id="demo-afterhours" class="rounded border-slate-600 bg-slate-800">
+                            <label for="demo-afterhours" class="text-sm text-slate-400">After business hours</label>
+                        </div>
+                        <button onclick="runWasmDemo()"
+                                class="w-full py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-lg font-medium transition flex items-center justify-center space-x-2">
+                            <i data-lucide="play" class="h-4 w-4"></i>
+                            <span>Run Inference</span>
+                        </button>
+                        <div id="wasm-result" class="hidden">
+                            <div class="grid grid-cols-3 gap-3 text-center">
+                                <div class="bg-slate-800/50 rounded-lg p-2">
+                                    <p class="text-xs text-slate-400">Fraud Score</p>
+                                    <p id="wasm-score" class="text-xl font-bold text-emerald-400">-</p>
+                                </div>
+                                <div class="bg-slate-800/50 rounded-lg p-2">
+                                    <p class="text-xs text-slate-400">Risk Level</p>
+                                    <p id="wasm-risk" class="text-xl font-bold">-</p>
+                                </div>
+                                <div class="bg-slate-800/50 rounded-lg p-2">
+                                    <p class="text-xs text-slate-400">Latency</p>
+                                    <p id="wasm-latency" class="text-xl font-bold text-blue-400">-</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Benchmark Results -->
+                <div class="card rounded-xl overflow-hidden lg:col-span-2">
+                    <div class="px-4 py-3 border-b border-slate-700/50 flex items-center justify-between">
+                        <div>
+                            <h3 class="font-semibold">Performance Benchmark</h3>
+                            <p class="text-xs text-slate-400">Simulated inference across 1,000 transactions</p>
+                        </div>
+                        <button onclick="runBenchmark()"
+                                class="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 rounded-lg text-sm font-medium transition flex items-center space-x-1">
+                            <i data-lucide="zap" class="h-4 w-4"></i>
+                            <span>Run Benchmark</span>
+                        </button>
+                    </div>
+                    <div class="p-4">
+                        <div id="benchmark-placeholder" class="text-center py-8 text-slate-500">
+                            <i data-lucide="bar-chart-3" class="h-12 w-12 mx-auto mb-2 opacity-50"></i>
+                            <p>Click "Run Benchmark" to test inference speed</p>
+                        </div>
+                        <div id="benchmark-results" class="hidden">
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                                <div class="bg-slate-800/50 rounded-lg p-3 text-center">
+                                    <p class="text-xs text-slate-400">Avg Latency</p>
+                                    <p id="bench-avg" class="text-2xl font-bold text-emerald-400">-</p>
+                                </div>
+                                <div class="bg-slate-800/50 rounded-lg p-3 text-center">
+                                    <p class="text-xs text-slate-400">Throughput</p>
+                                    <p id="bench-throughput" class="text-2xl font-bold text-blue-400">-</p>
+                                </div>
+                                <div class="bg-slate-800/50 rounded-lg p-3 text-center">
+                                    <p class="text-xs text-slate-400">P95 Latency</p>
+                                    <p id="bench-p95" class="text-2xl font-bold text-amber-400">-</p>
+                                </div>
+                                <div class="bg-slate-800/50 rounded-lg p-3 text-center">
+                                    <p class="text-xs text-slate-400">Backend</p>
+                                    <p id="bench-backend" class="text-2xl font-bold text-purple-400">-</p>
+                                </div>
+                            </div>
+                            <div id="latency-chart" class="h-32"></div>
+                            <p class="text-xs text-slate-500 mt-2 text-center">
+                                This demo simulates ONNX Runtime Web inference. In production, load actual ONNX models via:
+                                <code class="bg-slate-800 px-1 rounded">ort.InferenceSession.create('model.onnx')</code>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Model Info -->
+                <div class="card rounded-xl overflow-hidden lg:col-span-2">
+                    <div class="px-4 py-3 border-b border-slate-700/50">
+                        <h3 class="font-semibold">Available WASM/WebGPU Models</h3>
+                    </div>
+                    <div class="p-4">
+                        <div class="grid md:grid-cols-3 gap-4">
+                            <div class="bg-slate-800/50 rounded-lg p-4 border border-slate-700/50 hover:border-purple-500/50 transition">
+                                <div class="flex items-center space-x-2 mb-2">
+                                    <span class="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                                        <i data-lucide="database" class="h-4 w-4 text-blue-400"></i>
+                                    </span>
+                                    <div>
+                                        <p class="font-medium text-sm">Hazelcast LightGBM</p>
+                                        <p class="text-xs text-slate-500">~5MB • <0.1ms</p>
+                                    </div>
+                                </div>
+                                <p class="text-xs text-slate-400">Pre-trained gradient boosting model with 15 transaction features. Best for real-time scoring.</p>
+                            </div>
+                            <div class="bg-slate-800/50 rounded-lg p-4 border border-slate-700/50 hover:border-purple-500/50 transition">
+                                <div class="flex items-center space-x-2 mb-2">
+                                    <span class="w-8 h-8 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                                        <i data-lucide="brain" class="h-4 w-4 text-purple-400"></i>
+                                    </span>
+                                    <div>
+                                        <p class="font-medium text-sm">IBM LSTM/GRU</p>
+                                        <p class="text-xs text-slate-500">~100MB • ~10ms</p>
+                                    </div>
+                                </div>
+                                <p class="text-xs text-slate-400">Sequence-based fraud detection analyzing 7 transaction patterns. Best for complex fraud.</p>
+                            </div>
+                            <div class="bg-slate-800/50 rounded-lg p-4 border border-slate-700/50 hover:border-purple-500/50 transition">
+                                <div class="flex items-center space-x-2 mb-2">
+                                    <span class="w-8 h-8 bg-emerald-500/20 rounded-lg flex items-center justify-center">
+                                        <i data-lucide="boxes" class="h-4 w-4 text-emerald-400"></i>
+                                    </span>
+                                    <div>
+                                        <p class="font-medium text-sm">Isolation Forest</p>
+                                        <p class="text-xs text-slate-500">~1MB • ~0.05ms</p>
+                                    </div>
+                                </div>
+                                <p class="text-xs text-slate-400">Pure Rust anomaly detection compiled to WASM. Lightweight and fast for edge deployment.</p>
+                            </div>
+                        </div>
+                        <p class="text-xs text-slate-500 mt-4 text-center">
+                            See <code class="bg-slate-800 px-1 rounded">models/wasm/</code> folder for integration examples and documentation.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
     </main>
 
     <!-- Footer -->
@@ -971,6 +1178,299 @@
         // Close modal on outside click
         document.getElementById('alert-modal').addEventListener('click', function(e) {
             if (e.target === this) closeModal();
+        });
+
+        // ============================================
+        // WASM/WebGPU DEMO FUNCTIONS
+        // ============================================
+
+        // Detect browser capabilities
+        async function detectRuntimeCapabilities() {
+            const capabilities = {
+                wasm: false,
+                webgpu: false,
+                simd: false,
+                threads: false
+            };
+
+            // Check WebAssembly
+            try {
+                capabilities.wasm = typeof WebAssembly === 'object' &&
+                    typeof WebAssembly.instantiate === 'function';
+            } catch (e) {
+                capabilities.wasm = false;
+            }
+
+            // Check WebGPU
+            try {
+                if (navigator.gpu) {
+                    const adapter = await navigator.gpu.requestAdapter();
+                    capabilities.webgpu = !!adapter;
+                }
+            } catch (e) {
+                capabilities.webgpu = false;
+            }
+
+            // Check SIMD (simplified check)
+            try {
+                capabilities.simd = typeof WebAssembly.validate === 'function';
+            } catch (e) {
+                capabilities.simd = false;
+            }
+
+            // Check SharedArrayBuffer (threads)
+            try {
+                capabilities.threads = typeof SharedArrayBuffer !== 'undefined';
+            } catch (e) {
+                capabilities.threads = false;
+            }
+
+            return capabilities;
+        }
+
+        async function updateRuntimeUI() {
+            const caps = await detectRuntimeCapabilities();
+
+            // Update WASM
+            document.getElementById('wasm-support').textContent = caps.wasm ? 'Supported' : 'Not Available';
+            document.getElementById('wasm-support').className = `text-lg font-bold ${caps.wasm ? 'text-emerald-400' : 'text-red-400'}`;
+            document.getElementById('wasm-check').textContent = caps.wasm ? '✓' : '✗';
+
+            // Update WebGPU
+            document.getElementById('webgpu-support').textContent = caps.webgpu ? 'Supported' : 'Not Available';
+            document.getElementById('webgpu-support').className = `text-lg font-bold ${caps.webgpu ? 'text-emerald-400' : 'text-amber-400'}`;
+            document.getElementById('webgpu-check').textContent = caps.webgpu ? '✓' : '✗';
+
+            // Update SIMD
+            document.getElementById('simd-support').textContent = caps.simd ? 'Supported' : 'Not Available';
+            document.getElementById('simd-support').className = `text-lg font-bold ${caps.simd ? 'text-emerald-400' : 'text-amber-400'}`;
+            document.getElementById('simd-check').textContent = caps.simd ? '✓' : '✗';
+
+            // Update Threads
+            document.getElementById('threads-support').textContent = caps.threads ? 'Supported' : 'Not Available';
+            document.getElementById('threads-support').className = `text-lg font-bold ${caps.threads ? 'text-emerald-400' : 'text-amber-400'}`;
+            document.getElementById('threads-check').textContent = caps.threads ? '✓' : '✗';
+
+            // Determine best backend
+            let bestBackend = 'JavaScript';
+            let statusClass = 'bg-amber-500/20 text-amber-400';
+
+            if (caps.wasm) {
+                bestBackend = 'WASM';
+                statusClass = 'bg-blue-500/20 text-blue-400';
+            }
+            if (caps.wasm && caps.simd) {
+                bestBackend = 'WASM + SIMD';
+                statusClass = 'bg-emerald-500/20 text-emerald-400';
+            }
+            if (caps.webgpu) {
+                bestBackend = 'WebGPU';
+                statusClass = 'bg-purple-500/20 text-purple-400';
+            }
+
+            document.getElementById('best-backend').textContent = bestBackend;
+            document.getElementById('wasm-status').textContent = bestBackend;
+            document.getElementById('wasm-status').className = `px-3 py-1 rounded-full text-xs font-medium ${statusClass}`;
+
+            return { caps, bestBackend };
+        }
+
+        // Simulated fraud scoring model
+        function simulateFraudScore(amount, hour, dayOfWeek, afterHours) {
+            let score = 0.1; // Base score
+
+            // Amount-based risk
+            const avgAmount = 500000;
+            const amountRatio = amount / avgAmount;
+            if (amountRatio > 5) score += 0.3;
+            else if (amountRatio > 3) score += 0.2;
+            else if (amountRatio > 2) score += 0.1;
+
+            // Time-based risk
+            if (hour < 6 || hour >= 22) score += 0.2;
+            else if (hour < 8 || hour >= 18) score += 0.1;
+
+            // Weekend risk
+            if (dayOfWeek >= 5) score += 0.1;
+
+            // After hours flag
+            if (afterHours) score += 0.15;
+
+            // Add small random variation to simulate model behavior
+            score += (Math.random() - 0.5) * 0.1;
+
+            return Math.max(0, Math.min(1, score));
+        }
+
+        function runWasmDemo() {
+            const amount = parseFloat(document.getElementById('demo-amount').value) || 500000;
+            const hour = parseInt(document.getElementById('demo-hour').value) || 14;
+            const day = parseInt(document.getElementById('demo-day').value) || 2;
+            const afterHours = document.getElementById('demo-afterhours').checked;
+
+            // Simulate inference latency
+            const startTime = performance.now();
+
+            // Simulate some computation (in production, this would be actual ONNX inference)
+            const score = simulateFraudScore(amount, hour, day, afterHours);
+
+            // Add realistic latency simulation
+            const simulatedLatency = 0.05 + Math.random() * 0.1; // 0.05-0.15ms
+
+            const endTime = performance.now();
+            const actualLatency = endTime - startTime;
+            const displayLatency = Math.max(actualLatency, simulatedLatency);
+
+            // Update UI
+            document.getElementById('wasm-result').classList.remove('hidden');
+            document.getElementById('wasm-score').textContent = (score * 100).toFixed(1) + '%';
+
+            const riskLevel = score > 0.7 ? 'HIGH' : score > 0.4 ? 'MEDIUM' : 'LOW';
+            const riskColor = score > 0.7 ? 'text-red-400' : score > 0.4 ? 'text-amber-400' : 'text-emerald-400';
+            document.getElementById('wasm-risk').textContent = riskLevel;
+            document.getElementById('wasm-risk').className = `text-xl font-bold ${riskColor}`;
+
+            document.getElementById('wasm-latency').textContent = displayLatency.toFixed(2) + 'ms';
+
+            // Animate result
+            gsap.from('#wasm-result', {
+                opacity: 0,
+                y: 10,
+                duration: 0.3
+            });
+        }
+
+        let benchmarkLatencies = [];
+
+        async function runBenchmark() {
+            const placeholder = document.getElementById('benchmark-placeholder');
+            const results = document.getElementById('benchmark-results');
+
+            placeholder.innerHTML = '<div class="flex items-center justify-center space-x-2"><div class="animate-spin w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full"></div><span>Running benchmark...</span></div>';
+
+            // Get runtime info
+            const { caps, bestBackend } = await updateRuntimeUI();
+
+            // Run benchmark
+            const iterations = 1000;
+            benchmarkLatencies = [];
+
+            await new Promise(resolve => setTimeout(resolve, 100)); // Let UI update
+
+            const overallStart = performance.now();
+
+            for (let i = 0; i < iterations; i++) {
+                const start = performance.now();
+
+                // Simulate inference
+                simulateFraudScore(
+                    100000 + Math.random() * 10000000,
+                    Math.floor(Math.random() * 24),
+                    Math.floor(Math.random() * 7),
+                    Math.random() > 0.8
+                );
+
+                const end = performance.now();
+                benchmarkLatencies.push(end - start);
+            }
+
+            const overallEnd = performance.now();
+            const totalTime = overallEnd - overallStart;
+
+            // Calculate statistics
+            benchmarkLatencies.sort((a, b) => a - b);
+            const sum = benchmarkLatencies.reduce((a, b) => a + b, 0);
+            const avg = sum / iterations;
+            const p95 = benchmarkLatencies[Math.floor(iterations * 0.95)];
+            const throughput = (iterations / totalTime) * 1000;
+
+            // Update UI
+            placeholder.classList.add('hidden');
+            results.classList.remove('hidden');
+
+            document.getElementById('bench-avg').textContent = avg.toFixed(3) + 'ms';
+            document.getElementById('bench-throughput').textContent = Math.round(throughput).toLocaleString() + '/s';
+            document.getElementById('bench-p95').textContent = p95.toFixed(3) + 'ms';
+            document.getElementById('bench-backend').textContent = bestBackend.split(' ')[0];
+
+            // Create latency distribution chart
+            createLatencyChart();
+
+            // Animate results
+            gsap.from('#benchmark-results .bg-slate-800\\/50', {
+                opacity: 0,
+                y: 20,
+                duration: 0.4,
+                stagger: 0.1
+            });
+        }
+
+        function createLatencyChart() {
+            const container = document.getElementById('latency-chart');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            const margin = { top: 10, right: 20, bottom: 25, left: 40 };
+
+            d3.select('#latency-chart').selectAll('*').remove();
+
+            const svg = d3.select('#latency-chart')
+                .append('svg')
+                .attr('width', width)
+                .attr('height', height);
+
+            // Create histogram bins
+            const histogram = d3.histogram()
+                .domain([0, d3.max(benchmarkLatencies) * 1.1])
+                .thresholds(30);
+
+            const bins = histogram(benchmarkLatencies);
+
+            const x = d3.scaleLinear()
+                .domain([0, d3.max(bins, d => d.x1)])
+                .range([margin.left, width - margin.right]);
+
+            const y = d3.scaleLinear()
+                .domain([0, d3.max(bins, d => d.length)])
+                .range([height - margin.bottom, margin.top]);
+
+            // Draw bars
+            svg.selectAll('rect')
+                .data(bins)
+                .join('rect')
+                .attr('x', d => x(d.x0) + 1)
+                .attr('width', d => Math.max(0, x(d.x1) - x(d.x0) - 1))
+                .attr('y', height - margin.bottom)
+                .attr('height', 0)
+                .attr('fill', '#a855f7')
+                .attr('rx', 2)
+                .transition()
+                .duration(500)
+                .attr('y', d => y(d.length))
+                .attr('height', d => height - margin.bottom - y(d.length));
+
+            // X axis
+            svg.append('g')
+                .attr('transform', `translate(0,${height - margin.bottom})`)
+                .call(d3.axisBottom(x).ticks(5).tickFormat(d => d.toFixed(2) + 'ms'))
+                .selectAll('text')
+                .attr('fill', '#64748b')
+                .attr('font-size', '9px');
+
+            svg.selectAll('.domain, .tick line').attr('stroke', '#334155');
+
+            // Label
+            svg.append('text')
+                .attr('x', width / 2)
+                .attr('y', height - 3)
+                .attr('text-anchor', 'middle')
+                .attr('fill', '#64748b')
+                .attr('font-size', '10px')
+                .text('Latency Distribution');
+        }
+
+        // Initialize WASM demo on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            updateRuntimeUI();
         });
     </script>
 </body>
