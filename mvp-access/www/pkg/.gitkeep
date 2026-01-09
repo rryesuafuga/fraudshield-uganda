@@ -1,0 +1,4 @@
+# This folder contains the compiled WebAssembly output
+# Run ./build.sh to generate the Wasm files:
+# - fraudshield_wasm.js
+# - fraudshield_wasm_bg.wasm
