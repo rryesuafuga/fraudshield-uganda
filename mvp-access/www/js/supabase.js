@@ -16,7 +16,7 @@
 
 // Get these from: Supabase Dashboard > Settings > API
 const SUPABASE_URL = 'https://wnwobpqeaicsbqobmdry.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_ursXH3rEsznfIpF4O4ma0A_vu7naId5';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indud29icHFlYWljc2Jxb2JtZHJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc5ODYzODcsImV4cCI6MjA4MzU2MjM4N30.EHd4Vs-HnukUYZ1muqJLmakLh-pnseF_B_wNzgwXBjo';
 
 // ============================================
 // SUPABASE CLIENT INITIALIZATION
