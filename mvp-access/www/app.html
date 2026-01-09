@@ -353,15 +353,25 @@
     <script>
         // Auth check - must be authenticated to view this page
         (async function checkAuth() {
+            // Prevent redirect loops
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('noredirect') === '1') {
+                document.body.style.visibility = 'visible';
+                return;
+            }
+
             if (typeof window.FraudShieldAuth !== 'undefined') {
                 const status = window.FraudShieldAuth.getConfigStatus();
 
                 if (status.configured) {
-                    const { user } = await window.FraudShieldAuth.getCurrentUser();
+                    // Wait a moment for Supabase to fully initialize
+                    await new Promise(resolve => setTimeout(resolve, 200));
 
-                    if (!user) {
+                    const { session } = await window.FraudShieldAuth.getSession();
+
+                    if (!session) {
                         // Not authenticated - redirect to login
-                        window.location.href = 'index.html';
+                        window.location.replace('index.html?from=app');
                         return;
                     }
                 }
