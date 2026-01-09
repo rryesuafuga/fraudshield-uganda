@@ -1,6 +1,6 @@
 /**
- * FraudShield Uganda - WebAssembly MVP
- * JavaScript wrapper for Rust/Wasm fraud detection engine
+ * FraudShield Uganda - Fraud Detection Platform
+ * High-performance fraud detection engine
  */
 
 // ============================================
@@ -54,7 +54,7 @@ async function initWasm() {
         wasmModule = await import('../pkg/fraudshield_wasm.js');
         await wasmModule.default();
 
-        console.log('✅ FraudShield Wasm module loaded successfully');
+        console.log('✅ FraudShield engine loaded successfully');
         updateWasmStatus(true);
         return true;
     } catch (error) {
@@ -73,12 +73,12 @@ function updateWasmStatus(loaded) {
         if (loaded) {
             statusEl.innerHTML = `
                 <span class="w-2 h-2 bg-emerald-400 rounded-full pulse-dot"></span>
-                <span class="text-emerald-400 text-xs font-medium">Wasm Active</span>
+                <span class="text-emerald-400 text-xs font-medium">Active</span>
             `;
         } else {
             statusEl.innerHTML = `
                 <span class="w-2 h-2 bg-amber-400 rounded-full"></span>
-                <span class="text-amber-400 text-xs font-medium">JS Fallback</span>
+                <span class="text-amber-400 text-xs font-medium">Active</span>
             `;
         }
     }
@@ -732,7 +732,7 @@ function downloadResults() {
     const lines = [];
 
     // Header section
-    lines.push('FraudShield Uganda - Fraud Detection Report (Wasm MVP)');
+    lines.push('FraudShield Uganda - Fraud Detection Report');
     lines.push(`Generated: ${new Date().toISOString()}`);
     lines.push(`Risk Score: ${analysisResults.summary.risk_score}/100`);
     lines.push(`Total Records: ${analysisResults.summary.total_records}`);
@@ -779,7 +779,7 @@ function downloadResults() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `fraudshield-wasm-report-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `fraudshield-report-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
 }
@@ -880,7 +880,7 @@ function updateAuthUI(user) {
     } else {
         // User is not logged in - show login button
         authSection.innerHTML = `
-            <a href="login.html" class="flex items-center space-x-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-sm font-medium transition-colors">
+            <a href="index.html" class="flex items-center space-x-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-sm font-medium transition-colors">
                 <i data-lucide="log-in" class="h-4 w-4"></i>
                 <span>Sign In</span>
             </a>
@@ -917,7 +917,7 @@ async function handleSignOut() {
         await window.FraudShieldAuth.signOut();
     }
     currentUser = null;
-    window.location.href = 'login.html';
+    window.location.href = 'index.html';
 }
 
 /**

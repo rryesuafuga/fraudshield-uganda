@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Register | FraudShield Uganda</title>
-    <meta name="description" content="Create your FraudShield Uganda account - WebAssembly-powered fraud detection for microfinance institutions.">
+    <meta name="description" content="Create your FraudShield Uganda account - Advanced fraud detection for microfinance institutions.">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -24,7 +24,6 @@
             box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
             outline: none;
         }
-        .wasm-badge { background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); }
     </style>
 </head>
 <body class="gradient-bg min-h-screen text-white flex flex-col">
@@ -38,12 +37,9 @@
                     </div>
                     <div>
                         <h1 class="text-lg font-bold">FraudShield Uganda</h1>
-                        <p class="text-xs text-slate-400">WebAssembly-Powered</p>
+                        <p class="text-xs text-slate-400">Fraud Detection Platform</p>
                     </div>
                 </a>
-                <span class="wasm-badge px-3 py-1 text-white text-xs font-bold rounded-full">
-                    WASM MVP
-                </span>
             </div>
         </div>
     </header>
@@ -67,10 +63,10 @@
                         <i data-lucide="alert-triangle" class="h-5 w-5 text-amber-400 flex-shrink-0 mt-0.5"></i>
                         <div>
                             <p class="text-sm text-amber-400 font-medium">Demo Mode Active</p>
-                            <p class="text-xs text-slate-400 mt-1">Supabase not configured. Registration is disabled.</p>
+                            <p class="text-xs text-slate-400 mt-1">Authentication not configured. Registration is disabled.</p>
                         </div>
                     </div>
-                    <button onclick="window.location.href='index.html'" class="mt-3 w-full py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 rounded-lg text-sm font-medium transition-colors">
+                    <button onclick="window.location.href='app.html'" class="mt-3 w-full py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 rounded-lg text-sm font-medium transition-colors">
                         Continue to Demo
                     </button>
                 </div>
@@ -228,7 +224,7 @@
                 </div>
 
                 <!-- Login Link -->
-                <a href="login.html" class="block w-full py-3 border border-slate-600 hover:border-emerald-500/50 rounded-lg font-medium text-center text-slate-300 hover:text-white transition-colors">
+                <a href="index.html" class="block w-full py-3 border border-slate-600 hover:border-emerald-500/50 rounded-lg font-medium text-center text-slate-300 hover:text-white transition-colors">
                     Sign In Instead
                 </a>
             </div>
@@ -243,7 +239,7 @@
     <!-- Footer -->
     <footer class="border-t border-slate-700/50 py-4">
         <div class="max-w-7xl mx-auto px-4 text-center text-sm text-slate-500">
-            <p>&copy; 2025 FraudShield Uganda | Powered by Rust + WebAssembly</p>
+            <p>&copy; 2025 FraudShield Uganda</p>
         </div>
     </footer>
 
@@ -261,7 +257,7 @@
                 document.getElementById('demo-warning').classList.remove('hidden');
                 document.getElementById('register-form').classList.add('opacity-50', 'pointer-events-none');
             } else {
-                await window.FraudShieldAuth.redirectIfAuthenticated('index.html');
+                await window.FraudShieldAuth.redirectIfAuthenticated('app.html');
             }
         });
 

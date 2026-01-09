@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FraudShield Uganda | Fraud Detection Platform</title>
+    <meta name="description" content="Advanced fraud detection for microfinance institutions in Uganda.">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        .gradient-bg { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); }
+        .card { background: rgba(30, 41, 59, 0.9); backdrop-filter: blur(10px); border: 1px solid rgba(71, 85, 105, 0.5); }
+        .pulse-dot { animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .scroll-container::-webkit-scrollbar { width: 6px; height: 6px; }
+        .scroll-container::-webkit-scrollbar-track { background: transparent; }
+        .scroll-container::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+        .confidence-bar { transition: width 0.5s ease-out; }
+        .step-indicator { transition: all 0.3s ease; }
+        .step-indicator.active { background: #10b981; color: white; }
+        .step-indicator.completed { background: #10b981; color: white; }
+        .alert-row { transition: all 0.2s ease; }
+        .alert-row:hover { transform: translateX(4px); background: rgba(51, 65, 85, 0.5); }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen text-white">
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+        <div class="text-center">
+            <div class="w-16 h-16 border-4 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin mb-4"></div>
+            <p id="loading-message" class="text-slate-300">Loading...</p>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="border-b border-slate-700/50 bg-slate-900/80 backdrop-blur-sm sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 py-3">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg flex items-center justify-center">
+                        <i data-lucide="shield-check" class="h-6 w-6 text-white"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-lg font-bold">FraudShield Uganda</h1>
+                        <p class="text-xs text-slate-400">Fraud Detection Platform</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <div id="wasm-status" class="flex items-center space-x-2 px-3 py-1 bg-slate-800 rounded-full">
+                        <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+                        <span class="text-slate-400 text-xs">Ready</span>
+                    </div>
+                    <!-- Auth Section - dynamically populated -->
+                    <div id="auth-section">
+                        <!-- Will be populated by JS based on auth state -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Progress Steps -->
+    <div class="border-b border-slate-700/50 bg-slate-800/50">
+        <div class="max-w-7xl mx-auto px-4 py-3">
+            <div class="flex items-center justify-center space-x-4 md:space-x-8 text-sm">
+                <div class="flex items-center space-x-2">
+                    <span id="step1" class="step-indicator w-8 h-8 rounded-full flex items-center justify-center bg-slate-700 text-white font-semibold active">1</span>
+                    <span class="hidden md:inline text-slate-400">Upload Data</span>
+                </div>
+                <div class="h-px w-8 bg-slate-600"></div>
+                <div class="flex items-center space-x-2">
+                    <span id="step2" class="step-indicator w-8 h-8 rounded-full flex items-center justify-center bg-slate-700 text-slate-400 font-semibold">2</span>
+                    <span class="hidden md:inline text-slate-400">Map Columns</span>
+                </div>
+                <div class="h-px w-8 bg-slate-600"></div>
+                <div class="flex items-center space-x-2">
+                    <span id="step3" class="step-indicator w-8 h-8 rounded-full flex items-center justify-center bg-slate-700 text-slate-400 font-semibold">3</span>
+                    <span class="hidden md:inline text-slate-400">Analyze</span>
+                </div>
+                <div class="h-px w-8 bg-slate-600"></div>
+                <div class="flex items-center space-x-2">
+                    <span id="step4" class="step-indicator w-8 h-8 rounded-full flex items-center justify-center bg-slate-700 text-slate-400 font-semibold">4</span>
+                    <span class="hidden md:inline text-slate-400">Results</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 py-8">
+        <!-- Step 1: Upload -->
+        <div id="upload-section" class="space-y-6">
+            <div class="text-center max-w-2xl mx-auto mb-8">
+                <div class="w-16 h-16 bg-emerald-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <i data-lucide="shield" class="h-8 w-8 text-emerald-400"></i>
+                </div>
+                <h2 class="text-2xl md:text-3xl font-bold mb-3">Upload Your Loan Data</h2>
+                <p class="text-slate-400">Advanced fraud detection for microfinance institutions</p>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+                <!-- File Upload -->
+                <label class="group cursor-pointer">
+                    <div class="card rounded-2xl p-8 text-center hover:border-emerald-500/50 transition-all duration-300">
+                        <div class="w-16 h-16 bg-slate-800 rounded-xl flex items-center justify-center mx-auto mb-4 group-hover:bg-emerald-500/20 transition-colors">
+                            <i data-lucide="upload" class="h-8 w-8 text-slate-400 group-hover:text-emerald-400"></i>
+                        </div>
+                        <h3 class="font-semibold mb-2 text-lg">Upload CSV or Excel</h3>
+                        <p class="text-sm text-slate-500">Drag & drop or click to browse</p>
+                        <p class="text-xs text-slate-600 mt-2">Supports: .csv, .xlsx, .xls</p>
+                    </div>
+                    <input type="file" id="file-input" accept=".csv,.xlsx,.xls" class="hidden" onchange="handleFileUpload(event)">
+                </label>
+
+                <!-- Sample Data -->
+                <button onclick="loadSampleData()" class="group text-left">
+                    <div class="card rounded-2xl p-8 text-center hover:border-amber-500/50 transition-all duration-300 h-full">
+                        <div class="w-16 h-16 bg-slate-800 rounded-xl flex items-center justify-center mx-auto mb-4 group-hover:bg-amber-500/20 transition-colors">
+                            <i data-lucide="database" class="h-8 w-8 text-slate-400 group-hover:text-amber-400"></i>
+                        </div>
+                        <h3 class="font-semibold mb-2 text-lg">Try Sample Data</h3>
+                        <p class="text-sm text-slate-500">Test with demo dataset</p>
+                        <p class="text-xs text-slate-600 mt-2">500 loans with fraud patterns</p>
+                    </div>
+                </button>
+            </div>
+
+            <!-- Supported Formats Info -->
+            <div class="max-w-3xl mx-auto mt-8">
+                <div class="card rounded-xl p-6">
+                    <h4 class="font-semibold text-emerald-400 mb-3 flex items-center">
+                        <i data-lucide="info" class="h-5 w-5 mr-2"></i>
+                        Smart Column Detection
+                    </h4>
+                    <p class="text-slate-400 text-sm mb-4">
+                        FraudShield automatically recognizes columns from <strong class="text-white">ANY banking or SACCO system</strong>.
+                        Our algorithms detect:
+                    </p>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                        <div class="bg-slate-800/50 rounded-lg px-3 py-2 text-center">
+                            <span class="text-emerald-400">loan_id</span><br>
+                            <span class="text-slate-500">ref_no, loan_no, contract_id...</span>
+                        </div>
+                        <div class="bg-slate-800/50 rounded-lg px-3 py-2 text-center">
+                            <span class="text-emerald-400">borrower_name</span><br>
+                            <span class="text-slate-500">name, member_name, client...</span>
+                        </div>
+                        <div class="bg-slate-800/50 rounded-lg px-3 py-2 text-center">
+                            <span class="text-emerald-400">phone</span><br>
+                            <span class="text-slate-500">mobile, tel, contact...</span>
+                        </div>
+                        <div class="bg-slate-800/50 rounded-lg px-3 py-2 text-center">
+                            <span class="text-emerald-400">amount</span><br>
+                            <span class="text-slate-500">principal, loan_amount...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 2: Column Mapping -->
+        <div id="mapping-section" class="hidden space-y-6">
+            <div class="text-center mb-6">
+                <h2 class="text-2xl font-bold mb-2">Column Mapping Detected</h2>
+                <p class="text-slate-400">Review and adjust the auto-detected column mappings</p>
+            </div>
+
+            <div class="card rounded-xl p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 class="font-semibold">Auto-Detected Mappings</h3>
+                        <p class="text-sm text-slate-500" id="mapping-summary">Analyzing columns...</p>
+                    </div>
+                    <div class="flex items-center space-x-2 text-xs">
+                        <span>Confidence:</span>
+                        <span class="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-xs rounded">High</span>
+                        <span class="px-2 py-0.5 bg-amber-500/20 text-amber-400 text-xs rounded">Medium</span>
+                        <span class="px-2 py-0.5 bg-red-500/20 text-red-400 text-xs rounded">Low</span>
+                    </div>
+                </div>
+
+                <div id="mapping-table" class="overflow-x-auto max-h-96 scroll-container">
+                    <!-- Mapping rows will be inserted here -->
+                </div>
+
+                <div class="flex justify-between items-center mt-6 pt-4 border-t border-slate-700">
+                    <button onclick="goToStep(1)" class="px-4 py-2 text-slate-400 hover:text-white flex items-center">
+                        <i data-lucide="arrow-left" class="h-4 w-4 mr-2"></i> Back
+                    </button>
+                    <button onclick="proceedToAnalysis()" id="proceed-btn" class="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg font-medium flex items-center">
+                        Proceed to Analysis <i data-lucide="arrow-right" class="h-4 w-4 ml-2"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Data Preview -->
+            <div class="card rounded-xl p-6">
+                <h3 class="font-semibold mb-4">Data Preview (First 10 rows)</h3>
+                <div id="data-preview" class="overflow-x-auto max-h-64 scroll-container">
+                    <!-- Data preview table -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 3: Analyzing -->
+        <div id="analyzing-section" class="hidden">
+            <div class="flex flex-col items-center justify-center min-h-[50vh]">
+                <div class="w-20 h-20 border-4 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin mb-8"></div>
+                <h2 class="text-2xl font-bold mb-3">Analyzing Your Data</h2>
+                <p class="text-slate-400 mb-6">Running fraud detection algorithms...</p>
+                <div id="analysis-progress" class="w-64 space-y-2">
+                    <div class="flex items-center space-x-2 text-sm">
+                        <span id="check-ghost" class="text-slate-500">Detecting ghost loans...</span>
+                    </div>
+                    <div class="flex items-center space-x-2 text-sm">
+                        <span id="check-stacking" class="text-slate-500">Checking loan stacking...</span>
+                    </div>
+                    <div class="flex items-center space-x-2 text-sm">
+                        <span id="check-officer" class="text-slate-500">Analyzing officer patterns...</span>
+                    </div>
+                    <div class="flex items-center space-x-2 text-sm">
+                        <span id="check-timing" class="text-slate-500">Detecting timing anomalies...</span>
+                    </div>
+                    <div class="flex items-center space-x-2 text-sm">
+                        <span id="check-amount" class="text-slate-500">Checking amount outliers...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 4: Results -->
+        <div id="results-section" class="hidden space-y-6">
+            <!-- Summary Stats -->
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div class="card rounded-xl p-4 col-span-2 md:col-span-1">
+                    <div class="text-xs text-slate-400 mb-1">Risk Score</div>
+                    <div class="text-3xl font-bold" id="risk-score">0</div>
+                    <div class="h-2 bg-slate-700 rounded-full overflow-hidden mt-2">
+                        <div id="risk-bar" class="h-full bg-emerald-500 rounded-full confidence-bar" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div class="card rounded-xl p-4">
+                    <div class="text-xs text-slate-400 mb-1">Records Analyzed</div>
+                    <div class="text-2xl font-bold" id="total-records">0</div>
+                </div>
+                <div class="card rounded-xl p-4 bg-red-500/10 border-red-500/30">
+                    <div class="text-xs text-red-400 mb-1">Critical Alerts</div>
+                    <div class="text-2xl font-bold text-red-500" id="critical-count">0</div>
+                </div>
+                <div class="card rounded-xl p-4 bg-orange-500/10 border-orange-500/30">
+                    <div class="text-xs text-orange-400 mb-1">High Risk</div>
+                    <div class="text-2xl font-bold text-orange-500" id="high-count">0</div>
+                </div>
+                <div class="card rounded-xl p-4 bg-yellow-500/10 border-yellow-500/30">
+                    <div class="text-xs text-yellow-400 mb-1">Medium Risk</div>
+                    <div class="text-2xl font-bold text-yellow-500" id="medium-count">0</div>
+                </div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="flex space-x-2 border-b border-slate-700 pb-2">
+                <button onclick="showResultTab('alerts')" class="result-tab px-4 py-2 rounded-lg text-sm font-medium bg-emerald-500/20 text-emerald-400" data-tab="alerts">
+                    <i data-lucide="alert-triangle" class="h-4 w-4 inline mr-1"></i> Fraud Alerts
+                </button>
+                <button onclick="showResultTab('officers')" class="result-tab px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800" data-tab="officers">
+                    <i data-lucide="users" class="h-4 w-4 inline mr-1"></i> Officer Analysis
+                </button>
+                <button onclick="showResultTab('data')" class="result-tab px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800" data-tab="data">
+                    <i data-lucide="table" class="h-4 w-4 inline mr-1"></i> Data
+                </button>
+            </div>
+
+            <!-- Alerts Tab -->
+            <div id="tab-alerts" class="result-tab-content">
+                <div class="card rounded-xl overflow-hidden">
+                    <div class="p-4 border-b border-slate-700 flex items-center justify-between">
+                        <h3 class="font-semibold">Fraud Alerts</h3>
+                        <div class="flex items-center space-x-2 text-xs">
+                            <span>Filter:</span>
+                            <button onclick="filterAlerts('all')" class="alert-filter px-2 py-1 bg-slate-700 rounded active">All</button>
+                            <button onclick="filterAlerts('CRITICAL')" class="alert-filter px-2 py-1 text-slate-400 hover:bg-slate-700 rounded">Critical</button>
+                            <button onclick="filterAlerts('HIGH')" class="alert-filter px-2 py-1 text-slate-400 hover:bg-slate-700 rounded">High</button>
+                            <button onclick="filterAlerts('MEDIUM')" class="alert-filter px-2 py-1 text-slate-400 hover:bg-slate-700 rounded">Medium</button>
+                        </div>
+                    </div>
+                    <div id="alerts-list" class="max-h-96 overflow-y-auto scroll-container">
+                        <!-- Alerts will be inserted here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Officers Tab -->
+            <div id="tab-officers" class="result-tab-content hidden">
+                <div class="card rounded-xl overflow-hidden">
+                    <div class="p-4 border-b border-slate-700">
+                        <h3 class="font-semibold">Officer Risk Ranking</h3>
+                        <p class="text-sm text-slate-500">Officers ranked by fraud alert association</p>
+                    </div>
+                    <div id="officers-list" class="p-4 space-y-3">
+                        <!-- Officers will be inserted here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Data Tab -->
+            <div id="tab-data" class="result-tab-content hidden">
+                <div class="card rounded-xl overflow-hidden">
+                    <div class="p-4 border-b border-slate-700 flex items-center justify-between">
+                        <h3 class="font-semibold">Analyzed Data</h3>
+                        <button onclick="downloadResults()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded text-sm flex items-center">
+                            <i data-lucide="download" class="h-4 w-4 mr-1"></i> Export CSV
+                        </button>
+                    </div>
+                    <div id="data-table" class="overflow-x-auto max-h-96 scroll-container">
+                        <!-- Data table will be inserted here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex items-center justify-between">
+                <button onclick="resetAnalysis()" class="px-4 py-2 text-slate-400 hover:text-white flex items-center">
+                    <i data-lucide="refresh-cw" class="h-4 w-4 mr-2"></i> Analyze New Data
+                </button>
+                <div class="flex space-x-3">
+                    <button onclick="downloadResults()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg font-medium flex items-center">
+                        <i data-lucide="download" class="h-4 w-4 mr-2"></i> Download Report
+                    </button>
+                    <a href="https://fraudshield-uganda.vercel.app/" target="_blank" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg font-medium flex items-center">
+                        Contact FraudShield <i data-lucide="arrow-right" class="h-4 w-4 ml-2"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-700/50 mt-12 py-6">
+        <div class="max-w-7xl mx-auto px-4 text-center text-sm text-slate-500">
+            <p class="mb-2">&copy; 2025 FraudShield Uganda</p>
+            <p>sseguya256@gmail.com | +256 784 902 753</p>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="js/supabase.js"></script>
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
