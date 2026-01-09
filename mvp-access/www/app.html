@@ -29,7 +29,7 @@
         .alert-row:hover { transform: translateX(4px); background: rgba(51, 65, 85, 0.5); }
     </style>
 </head>
-<body class="gradient-bg min-h-screen text-white">
+<body class="gradient-bg min-h-screen text-white" style="visibility: hidden;">
     <!-- Loading Overlay -->
     <div id="loading-overlay" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center hidden">
         <div class="text-center">
@@ -350,6 +350,27 @@
 
     <!-- JavaScript -->
     <script src="js/supabase.js"></script>
+    <script>
+        // Auth check - must be authenticated to view this page
+        (async function checkAuth() {
+            if (typeof window.FraudShieldAuth !== 'undefined') {
+                const status = window.FraudShieldAuth.getConfigStatus();
+
+                if (status.configured) {
+                    const { user } = await window.FraudShieldAuth.getCurrentUser();
+
+                    if (!user) {
+                        // Not authenticated - redirect to login
+                        window.location.href = 'index.html';
+                        return;
+                    }
+                }
+            }
+
+            // Show page content (user is authenticated or demo mode)
+            document.body.style.visibility = 'visible';
+        })();
+    </script>
     <script type="module" src="js/main.js"></script>
 </body>
 </html>
