@@ -13,6 +13,8 @@ This is the WebAssembly (Wasm) version of the FraudShield MVP. All fraud detecti
 | **Core Engine** | Rust |
 | **Compilation** | wasm-pack, wasm-bindgen |
 | **Frontend** | HTML5, TailwindCSS, JavaScript |
+| **Authentication** | Supabase Auth |
+| **Database** | Supabase PostgreSQL |
 | **File Parsing** | PapaParse (CSV), SheetJS (Excel) |
 | **Icons** | Lucide Icons |
 
@@ -28,6 +30,8 @@ All features from the original MVP are preserved:
 - **Amount Outlier Detection** - Statistical outliers
 - **CSV Export** - Download fraud reports
 - **Sample Data Generator** - Test with generated fraud patterns
+- **User Authentication** - Login/Register with Supabase
+- **Analysis History** - Cloud-saved analysis results (authenticated users)
 
 ## Performance Benefits
 
@@ -43,17 +47,21 @@ All features from the original MVP are preserved:
 
 ```
 mvp-access/
-├── Cargo.toml           # Rust dependencies
-├── build.sh             # Build script
-├── README.md            # This file
-├── vercel.json          # Deployment config
+├── Cargo.toml              # Rust dependencies
+├── build.sh                # Build script
+├── README.md               # This file
+├── vercel.json             # Deployment config
 ├── src/
-│   └── lib.rs           # Rust fraud detection engine
+│   └── lib.rs              # Rust fraud detection engine
 └── www/
-    ├── index.html       # Main HTML file
+    ├── index.html          # Main app (protected)
+    ├── login.html          # Login page
+    ├── register.html       # Registration page
+    ├── forgot-password.html # Password reset
     ├── js/
-    │   └── main.js      # JavaScript wrapper
-    └── pkg/             # Wasm output (generated)
+    │   ├── main.js         # JavaScript wrapper
+    │   └── supabase.js     # Authentication module
+    └── pkg/                # Wasm output (generated)
         ├── fraudshield_wasm.js
         └── fraudshield_wasm_bg.wasm
 ```
@@ -120,6 +128,87 @@ Upload the `www/` folder to any static hosting service:
 - GitHub Pages
 - AWS S3
 - Cloudflare Pages
+
+## Authentication Setup (Supabase)
+
+The MVP supports user authentication via Supabase. Follow these steps to enable it:
+
+### Step 1: Create Supabase Project
+
+1. Go to [https://supabase.com](https://supabase.com) and sign up/log in
+2. Click **"New Project"**
+3. Fill in:
+   - **Name**: `fraudshield-uganda`
+   - **Database Password**: (save this securely)
+   - **Region**: Choose closest to Uganda (e.g., `eu-west-1`)
+4. Click **"Create new project"** and wait for setup
+
+### Step 2: Get API Keys
+
+1. Go to **Settings** > **API** in your Supabase dashboard
+2. Copy these values:
+   - **Project URL**: `https://xxxxx.supabase.co`
+   - **anon public key**: `eyJhbGciOiJIUzI1NiIs...`
+
+### Step 3: Configure the MVP
+
+Edit `www/js/supabase.js` and replace the placeholder values:
+
+```javascript
+// BEFORE (placeholders)
+const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+
+// AFTER (your actual values)
+const SUPABASE_URL = 'https://abcdefgh.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIs...';
+```
+
+### Step 4: Enable Email Authentication
+
+1. Go to **Authentication** > **Providers** in Supabase
+2. Ensure **Email** is enabled
+3. Optionally configure:
+   - Email confirmation (recommended for production)
+   - Password recovery email template
+
+### Step 5: Create Database Tables (Optional)
+
+To store analysis history, run this SQL in **SQL Editor**:
+
+```sql
+-- Analysis sessions table
+CREATE TABLE analysis_sessions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    file_name TEXT,
+    loans_analyzed INTEGER DEFAULT 0,
+    alerts_generated INTEGER DEFAULT 0,
+    risk_score INTEGER DEFAULT 0,
+    results JSONB,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Enable Row Level Security
+ALTER TABLE analysis_sessions ENABLE ROW LEVEL SECURITY;
+
+-- Policy: Users can only see their own sessions
+CREATE POLICY "Users can view own sessions"
+    ON analysis_sessions FOR SELECT
+    USING (auth.uid() = user_id);
+
+-- Policy: Users can insert their own sessions
+CREATE POLICY "Users can insert own sessions"
+    ON analysis_sessions FOR INSERT
+    WITH CHECK (auth.uid() = user_id);
+```
+
+### Demo Mode
+
+If Supabase is not configured (placeholder values remain), the MVP runs in **demo mode**:
+- Users can access the app without logging in
+- Analysis history is not saved
+- Login/register pages show a "Continue to Demo" option
 
 ## API Reference
 

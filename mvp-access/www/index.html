@@ -57,9 +57,16 @@
                         <span class="w-2 h-2 bg-slate-500 rounded-full animate-pulse"></span>
                         <span class="text-slate-400 text-xs">Initializing...</span>
                     </div>
-                    <span class="wasm-badge px-3 py-1 text-white text-xs font-bold rounded-full">
+                    <span class="wasm-badge px-3 py-1 text-white text-xs font-bold rounded-full hidden md:inline">
                         WASM MVP
                     </span>
+                    <!-- Auth Section - dynamically populated -->
+                    <div id="auth-section">
+                        <a href="login.html" class="flex items-center space-x-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-sm font-medium transition-colors">
+                            <i data-lucide="log-in" class="h-4 w-4"></i>
+                            <span>Sign In</span>
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -378,6 +385,7 @@
     </footer>
 
     <!-- JavaScript -->
+    <script src="js/supabase.js"></script>
     <script type="module" src="js/main.js"></script>
 </body>
 </html>

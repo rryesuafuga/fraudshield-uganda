@@ -795,6 +795,237 @@ document.addEventListener('DOMContentLoaded', async () => {
     lucide.createIcons();
 });
 
+// ============================================
+// AUTHENTICATION INTEGRATION
+// ============================================
+let currentUser = null;
+
+/**
+ * Initialize authentication and check user status
+ */
+async function initAuth() {
+    // Wait for supabase.js to load
+    if (typeof window.FraudShieldAuth === 'undefined') {
+        console.warn('⚠️ Supabase auth module not loaded');
+        return null;
+    }
+
+    const status = window.FraudShieldAuth.getConfigStatus();
+
+    if (!status.configured) {
+        console.log('⚠️ Supabase not configured - running in demo mode');
+        updateAuthUI(null);
+        return null;
+    }
+
+    // Check if user is authenticated
+    const { user, error } = await window.FraudShieldAuth.getCurrentUser();
+
+    if (user) {
+        currentUser = user;
+        updateAuthUI(user);
+        console.log('✅ User authenticated:', user.email);
+    } else {
+        updateAuthUI(null);
+    }
+
+    return user;
+}
+
+/**
+ * Update the UI based on authentication status
+ */
+function updateAuthUI(user) {
+    const authSection = document.getElementById('auth-section');
+    if (!authSection) return;
+
+    if (user) {
+        // User is logged in - show user menu
+        const profile = user.user_metadata || {};
+        const displayName = profile.full_name || profile.organization_name || user.email.split('@')[0];
+
+        authSection.innerHTML = `
+            <div class="relative" id="user-menu-container">
+                <button onclick="toggleUserMenu()" class="flex items-center space-x-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors">
+                    <div class="w-7 h-7 bg-emerald-500/20 rounded-full flex items-center justify-center">
+                        <span class="text-emerald-400 text-xs font-bold">${displayName.charAt(0).toUpperCase()}</span>
+                    </div>
+                    <span class="text-sm text-slate-300 hidden md:inline">${displayName}</span>
+                    <i data-lucide="chevron-down" class="h-4 w-4 text-slate-400"></i>
+                </button>
+                <div id="user-menu" class="hidden absolute right-0 mt-2 w-56 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-50">
+                    <div class="p-3 border-b border-slate-700">
+                        <p class="text-sm font-medium text-white">${displayName}</p>
+                        <p class="text-xs text-slate-400">${user.email}</p>
+                        ${profile.organization_name ? `<p class="text-xs text-emerald-400 mt-1">${profile.organization_name}</p>` : ''}
+                    </div>
+                    <div class="p-2">
+                        <button onclick="showAnalysisHistory()" class="w-full text-left px-3 py-2 text-sm text-slate-300 hover:bg-slate-700 rounded flex items-center space-x-2">
+                            <i data-lucide="history" class="h-4 w-4"></i>
+                            <span>Analysis History</span>
+                        </button>
+                        <button onclick="showProfileSettings()" class="w-full text-left px-3 py-2 text-sm text-slate-300 hover:bg-slate-700 rounded flex items-center space-x-2">
+                            <i data-lucide="settings" class="h-4 w-4"></i>
+                            <span>Settings</span>
+                        </button>
+                        <hr class="my-2 border-slate-700">
+                        <button onclick="handleSignOut()" class="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-slate-700 rounded flex items-center space-x-2">
+                            <i data-lucide="log-out" class="h-4 w-4"></i>
+                            <span>Sign Out</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    } else {
+        // User is not logged in - show login button
+        authSection.innerHTML = `
+            <a href="login.html" class="flex items-center space-x-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-sm font-medium transition-colors">
+                <i data-lucide="log-in" class="h-4 w-4"></i>
+                <span>Sign In</span>
+            </a>
+        `;
+    }
+
+    lucide.createIcons();
+}
+
+/**
+ * Toggle user dropdown menu
+ */
+function toggleUserMenu() {
+    const menu = document.getElementById('user-menu');
+    if (menu) {
+        menu.classList.toggle('hidden');
+    }
+}
+
+// Close menu when clicking outside
+document.addEventListener('click', (e) => {
+    const container = document.getElementById('user-menu-container');
+    const menu = document.getElementById('user-menu');
+    if (container && menu && !container.contains(e.target)) {
+        menu.classList.add('hidden');
+    }
+});
+
+/**
+ * Handle user sign out
+ */
+async function handleSignOut() {
+    if (typeof window.FraudShieldAuth !== 'undefined') {
+        await window.FraudShieldAuth.signOut();
+    }
+    currentUser = null;
+    window.location.href = 'login.html';
+}
+
+/**
+ * Show analysis history modal
+ */
+async function showAnalysisHistory() {
+    toggleUserMenu();
+
+    if (typeof window.FraudShieldAuth === 'undefined') return;
+
+    const { data: history, error } = await window.FraudShieldAuth.getAnalysisHistory(10);
+
+    if (error) {
+        console.error('Failed to load history:', error);
+        return;
+    }
+
+    // Create and show modal
+    const modal = document.createElement('div');
+    modal.id = 'history-modal';
+    modal.className = 'fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4';
+
+    modal.innerHTML = `
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden">
+            <div class="p-4 border-b border-slate-700 flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-white">Analysis History</h3>
+                <button onclick="closeHistoryModal()" class="text-slate-400 hover:text-white">
+                    <i data-lucide="x" class="h-5 w-5"></i>
+                </button>
+            </div>
+            <div class="p-4 overflow-y-auto max-h-[60vh]">
+                ${history.length === 0 ? `
+                    <div class="text-center py-8 text-slate-500">
+                        <i data-lucide="file-search" class="h-12 w-12 mx-auto mb-3 opacity-50"></i>
+                        <p>No analysis history yet</p>
+                    </div>
+                ` : history.map(item => `
+                    <div class="p-3 bg-slate-900/50 rounded-lg mb-3">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-medium text-white">${item.file_name}</span>
+                            <span class="text-xs text-slate-500">${new Date(item.created_at).toLocaleDateString()}</span>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2 text-xs">
+                            <div class="text-slate-400">Records: <span class="text-white">${item.loans_analyzed}</span></div>
+                            <div class="text-slate-400">Alerts: <span class="text-amber-400">${item.alerts_generated}</span></div>
+                            <div class="text-slate-400">Risk: <span class="${item.risk_score > 50 ? 'text-red-400' : 'text-emerald-400'}">${item.risk_score}</span></div>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+    lucide.createIcons();
+}
+
+function closeHistoryModal() {
+    const modal = document.getElementById('history-modal');
+    if (modal) modal.remove();
+}
+
+/**
+ * Show profile settings modal
+ */
+function showProfileSettings() {
+    toggleUserMenu();
+    // TODO: Implement profile settings modal
+    alert('Profile settings coming soon!');
+}
+
+/**
+ * Save analysis results to database (if authenticated)
+ */
+async function saveAnalysisToCloud(results, fileName = 'Unknown') {
+    if (!currentUser || typeof window.FraudShieldAuth === 'undefined') {
+        console.log('Not authenticated, skipping cloud save');
+        return;
+    }
+
+    const { data, error } = await window.FraudShieldAuth.saveAnalysisSession({
+        ...results,
+        fileName
+    });
+
+    if (error) {
+        console.error('Failed to save analysis:', error);
+    } else {
+        console.log('✅ Analysis saved to cloud');
+    }
+}
+
+// ============================================
+// INITIALIZATION
+// ============================================
+document.addEventListener('DOMContentLoaded', async () => {
+    // Initialize Wasm
+    await initWasm();
+
+    // Initialize Auth (after a small delay to ensure supabase.js is loaded)
+    setTimeout(async () => {
+        await initAuth();
+    }, 100);
+
+    // Initialize Lucide icons
+    lucide.createIcons();
+});
+
 // Export functions for HTML access
 window.handleFileUpload = handleFileUpload;
 window.loadSampleData = loadSampleData;
@@ -806,3 +1037,8 @@ window.showResultTab = showResultTab;
 window.filterAlerts = filterAlerts;
 window.toggleAlertDetails = toggleAlertDetails;
 window.downloadResults = downloadResults;
+window.toggleUserMenu = toggleUserMenu;
+window.handleSignOut = handleSignOut;
+window.showAnalysisHistory = showAnalysisHistory;
+window.closeHistoryModal = closeHistoryModal;
+window.showProfileSettings = showProfileSettings;

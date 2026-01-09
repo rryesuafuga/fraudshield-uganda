@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register | FraudShield Uganda</title>
+    <meta name="description" content="Create your FraudShield Uganda account - WebAssembly-powered fraud detection for microfinance institutions.">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        .gradient-bg { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); }
+        .card { background: rgba(30, 41, 59, 0.9); backdrop-filter: blur(10px); border: 1px solid rgba(71, 85, 105, 0.5); }
+        .input-field {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(71, 85, 105, 0.5);
+            transition: all 0.2s ease;
+        }
+        .input-field:focus {
+            border-color: #10b981;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+            outline: none;
+        }
+        .wasm-badge { background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen text-white flex flex-col">
+    <!-- Header -->
+    <header class="border-b border-slate-700/50 bg-slate-900/80 backdrop-blur-sm">
+        <div class="max-w-7xl mx-auto px-4 py-3">
+            <div class="flex items-center justify-between">
+                <a href="index.html" class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg flex items-center justify-center">
+                        <i data-lucide="shield-check" class="h-6 w-6 text-white"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-lg font-bold">FraudShield Uganda</h1>
+                        <p class="text-xs text-slate-400">WebAssembly-Powered</p>
+                    </div>
+                </a>
+                <span class="wasm-badge px-3 py-1 text-white text-xs font-bold rounded-full">
+                    WASM MVP
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex items-center justify-center p-4 py-8">
+        <div class="w-full max-w-md">
+            <!-- Register Card -->
+            <div class="card rounded-2xl p-8">
+                <div class="text-center mb-8">
+                    <div class="w-16 h-16 bg-emerald-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <i data-lucide="user-plus" class="h-8 w-8 text-emerald-400"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold mb-2">Create Account</h2>
+                    <p class="text-slate-400">Join FraudShield to protect your MFI</p>
+                </div>
+
+                <!-- Demo Mode Warning -->
+                <div id="demo-warning" class="hidden mb-6 p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                    <div class="flex items-start space-x-3">
+                        <i data-lucide="alert-triangle" class="h-5 w-5 text-amber-400 flex-shrink-0 mt-0.5"></i>
+                        <div>
+                            <p class="text-sm text-amber-400 font-medium">Demo Mode Active</p>
+                            <p class="text-xs text-slate-400 mt-1">Supabase not configured. Registration is disabled.</p>
+                        </div>
+                    </div>
+                    <button onclick="window.location.href='index.html'" class="mt-3 w-full py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 rounded-lg text-sm font-medium transition-colors">
+                        Continue to Demo
+                    </button>
+                </div>
+
+                <!-- Error Message -->
+                <div id="error-message" class="hidden mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+                    <div class="flex items-start space-x-3">
+                        <i data-lucide="x-circle" class="h-5 w-5 text-red-400 flex-shrink-0 mt-0.5"></i>
+                        <p id="error-text" class="text-sm text-red-400"></p>
+                    </div>
+                </div>
+
+                <!-- Success Message -->
+                <div id="success-message" class="hidden mb-6 p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
+                    <div class="flex items-start space-x-3">
+                        <i data-lucide="check-circle" class="h-5 w-5 text-emerald-400 flex-shrink-0 mt-0.5"></i>
+                        <p id="success-text" class="text-sm text-emerald-400"></p>
+                    </div>
+                </div>
+
+                <!-- Register Form -->
+                <form id="register-form" onsubmit="handleRegister(event)">
+                    <div class="space-y-4">
+                        <!-- Organization Name -->
+                        <div>
+                            <label class="block text-sm font-medium text-slate-300 mb-2">Organization Name</label>
+                            <div class="relative">
+                                <i data-lucide="building" class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-500"></i>
+                                <input
+                                    type="text"
+                                    id="organization"
+                                    name="organization"
+                                    required
+                                    placeholder="Your MFI or SACCO name"
+                                    class="input-field w-full pl-10 pr-4 py-3 rounded-lg text-white placeholder-slate-500"
+                                >
+                            </div>
+                        </div>
+
+                        <!-- Full Name -->
+                        <div>
+                            <label class="block text-sm font-medium text-slate-300 mb-2">Your Full Name</label>
+                            <div class="relative">
+                                <i data-lucide="user" class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-500"></i>
+                                <input
+                                    type="text"
+                                    id="fullName"
+                                    name="fullName"
+                                    required
+                                    placeholder="John Mukasa"
+                                    class="input-field w-full pl-10 pr-4 py-3 rounded-lg text-white placeholder-slate-500"
+                                >
+                            </div>
+                        </div>
+
+                        <!-- Email -->
+                        <div>
+                            <label class="block text-sm font-medium text-slate-300 mb-2">Email Address</label>
+                            <div class="relative">
+                                <i data-lucide="mail" class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-500"></i>
+                                <input
+                                    type="email"
+                                    id="email"
+                                    name="email"
+                                    required
+                                    placeholder="you@example.com"
+                                    class="input-field w-full pl-10 pr-4 py-3 rounded-lg text-white placeholder-slate-500"
+                                >
+                            </div>
+                        </div>
+
+                        <!-- Phone -->
+                        <div>
+                            <label class="block text-sm font-medium text-slate-300 mb-2">Phone Number</label>
+                            <div class="relative">
+                                <i data-lucide="phone" class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-500"></i>
+                                <input
+                                    type="tel"
+                                    id="phone"
+                                    name="phone"
+                                    placeholder="+256 7XX XXX XXX"
+                                    class="input-field w-full pl-10 pr-4 py-3 rounded-lg text-white placeholder-slate-500"
+                                >
+                            </div>
+                        </div>
+
+                        <!-- Password -->
+                        <div>
+                            <label class="block text-sm font-medium text-slate-300 mb-2">Password</label>
+                            <div class="relative">
+                                <i data-lucide="lock" class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-500"></i>
+                                <input
+                                    type="password"
+                                    id="password"
+                                    name="password"
+                                    required
+                                    minlength="6"
+                                    placeholder="Minimum 6 characters"
+                                    class="input-field w-full pl-10 pr-12 py-3 rounded-lg text-white placeholder-slate-500"
+                                >
+                                <button type="button" onclick="togglePassword('password', 'password-icon')" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
+                                    <i id="password-icon" data-lucide="eye" class="h-5 w-5"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Confirm Password -->
+                        <div>
+                            <label class="block text-sm font-medium text-slate-300 mb-2">Confirm Password</label>
+                            <div class="relative">
+                                <i data-lucide="lock" class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-500"></i>
+                                <input
+                                    type="password"
+                                    id="confirmPassword"
+                                    name="confirmPassword"
+                                    required
+                                    minlength="6"
+                                    placeholder="Confirm your password"
+                                    class="input-field w-full pl-10 pr-12 py-3 rounded-lg text-white placeholder-slate-500"
+                                >
+                                <button type="button" onclick="togglePassword('confirmPassword', 'confirm-icon')" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
+                                    <i id="confirm-icon" data-lucide="eye" class="h-5 w-5"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Terms -->
+                        <div class="flex items-start space-x-2">
+                            <input type="checkbox" id="terms" required class="w-4 h-4 mt-1 rounded border-slate-600 bg-slate-800 text-emerald-500 focus:ring-emerald-500">
+                            <label for="terms" class="text-sm text-slate-400">
+                                I agree to the <a href="#" class="text-emerald-400 hover:text-emerald-300">Terms of Service</a> and <a href="#" class="text-emerald-400 hover:text-emerald-300">Privacy Policy</a>
+                            </label>
+                        </div>
+
+                        <!-- Submit Button -->
+                        <button
+                            type="submit"
+                            id="submit-btn"
+                            class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 rounded-lg font-semibold text-white transition-colors flex items-center justify-center space-x-2"
+                        >
+                            <span>Create Account</span>
+                            <i data-lucide="arrow-right" class="h-5 w-5"></i>
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Divider -->
+                <div class="relative my-8">
+                    <div class="absolute inset-0 flex items-center">
+                        <div class="w-full border-t border-slate-700"></div>
+                    </div>
+                    <div class="relative flex justify-center">
+                        <span class="px-4 bg-slate-800 text-sm text-slate-500">Already have an account?</span>
+                    </div>
+                </div>
+
+                <!-- Login Link -->
+                <a href="login.html" class="block w-full py-3 border border-slate-600 hover:border-emerald-500/50 rounded-lg font-medium text-center text-slate-300 hover:text-white transition-colors">
+                    Sign In Instead
+                </a>
+            </div>
+
+            <!-- Help Text -->
+            <p class="text-center text-sm text-slate-500 mt-6">
+                Need help? Contact <a href="mailto:sseguya256@gmail.com" class="text-emerald-400 hover:text-emerald-300">sseguya256@gmail.com</a>
+            </p>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-700/50 py-4">
+        <div class="max-w-7xl mx-auto px-4 text-center text-sm text-slate-500">
+            <p>&copy; 2025 FraudShield Uganda | Powered by Rust + WebAssembly</p>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="js/supabase.js"></script>
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // Check auth status on page load
+        document.addEventListener('DOMContentLoaded', async () => {
+            const status = window.FraudShieldAuth.getConfigStatus();
+
+            if (!status.configured) {
+                document.getElementById('demo-warning').classList.remove('hidden');
+                document.getElementById('register-form').classList.add('opacity-50', 'pointer-events-none');
+            } else {
+                await window.FraudShieldAuth.redirectIfAuthenticated('index.html');
+            }
+        });
+
+        // Toggle password visibility
+        function togglePassword(inputId, iconId) {
+            const input = document.getElementById(inputId);
+            const icon = document.getElementById(iconId);
+
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.setAttribute('data-lucide', 'eye-off');
+            } else {
+                input.type = 'password';
+                icon.setAttribute('data-lucide', 'eye');
+            }
+            lucide.createIcons();
+        }
+
+        // Show error message
+        function showError(message) {
+            const errorDiv = document.getElementById('error-message');
+            const errorText = document.getElementById('error-text');
+            errorText.textContent = message;
+            errorDiv.classList.remove('hidden');
+            document.getElementById('success-message').classList.add('hidden');
+        }
+
+        // Show success message
+        function showSuccess(message) {
+            const successDiv = document.getElementById('success-message');
+            const successText = document.getElementById('success-text');
+            successText.textContent = message;
+            successDiv.classList.remove('hidden');
+            document.getElementById('error-message').classList.add('hidden');
+        }
+
+        // Handle registration form submission
+        async function handleRegister(event) {
+            event.preventDefault();
+
+            const organization = document.getElementById('organization').value;
+            const fullName = document.getElementById('fullName').value;
+            const email = document.getElementById('email').value;
+            const phone = document.getElementById('phone').value;
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            const submitBtn = document.getElementById('submit-btn');
+
+            // Validate passwords match
+            if (password !== confirmPassword) {
+                showError('Passwords do not match');
+                return;
+            }
+
+            // Disable button and show loading
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<div class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div><span class="ml-2">Creating account...</span>';
+
+            try {
+                const { user, error } = await window.FraudShieldAuth.signUp(email, password, {
+                    organization,
+                    fullName,
+                    phone
+                });
+
+                if (error) {
+                    showError(error.message || 'Failed to create account');
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<span>Create Account</span><i data-lucide="arrow-right" class="h-5 w-5"></i>';
+                    lucide.createIcons();
+                    return;
+                }
+
+                // Success
+                showSuccess('Account created! Please check your email to verify your account.');
+                document.getElementById('register-form').classList.add('opacity-50', 'pointer-events-none');
+
+            } catch (err) {
+                showError('An unexpected error occurred. Please try again.');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<span>Create Account</span><i data-lucide="arrow-right" class="h-5 w-5"></i>';
+                lucide.createIcons();
+            }
+        }
+    </script>
+</body>
+</html>
