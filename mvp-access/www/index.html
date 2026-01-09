@@ -192,8 +192,20 @@
                 document.getElementById('demo-warning').classList.remove('hidden');
                 document.getElementById('login-form').classList.add('opacity-50', 'pointer-events-none');
             } else {
-                // Redirect if already authenticated
-                await window.FraudShieldAuth.redirectIfAuthenticated('app.html');
+                // Don't redirect if user just came from app (prevents loop)
+                const urlParams = new URLSearchParams(window.location.search);
+                if (urlParams.get('from') === 'app') {
+                    return; // User was just redirected here, don't redirect back
+                }
+
+                // Wait for Supabase to initialize
+                await new Promise(resolve => setTimeout(resolve, 200));
+
+                // Only redirect if there's a valid session
+                const { session } = await window.FraudShieldAuth.getSession();
+                if (session) {
+                    window.location.replace('app.html');
+                }
             }
         });
 
