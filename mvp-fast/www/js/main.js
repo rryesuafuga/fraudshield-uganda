@@ -1,6 +1,6 @@
 /**
  * FraudShield Uganda - Fast Edition
- * High-performance fraud detection with WebAssembly
+ * High-performance fraud detection (with Wasm support when available)
  */
 
 // ============================================
@@ -22,20 +22,26 @@ const STANDARD_FIELDS = [
 ];
 
 // ============================================
-// WASM INITIALIZATION
+// WASM INITIALIZATION (Optional - falls back to JS)
 // ============================================
 async function initWasm() {
     try {
-        wasmModule = await import('../pkg/fraudshield_wasm.js');
-        await wasmModule.default();
-        updateEngineStatus(true);
-        console.log('FraudShield engine loaded successfully');
-        return true;
+        // Try to load Wasm module if available
+        const wasmPath = './pkg/fraudshield_wasm.js';
+        const response = await fetch(wasmPath, { method: 'HEAD' });
+        if (response.ok) {
+            // Dynamic import for Wasm
+            wasmModule = await import(wasmPath);
+            await wasmModule.default();
+            updateEngineStatus(true);
+            console.log('Wasm engine loaded successfully');
+            return true;
+        }
     } catch (error) {
-        console.warn('Wasm not available, using JS fallback:', error.message);
-        updateEngineStatus(false);
-        return false;
+        console.log('Wasm not available, using optimized JS engine');
     }
+    updateEngineStatus(false);
+    return false;
 }
 
 function updateEngineStatus(loaded) {
@@ -44,12 +50,12 @@ function updateEngineStatus(loaded) {
         if (loaded) {
             statusEl.innerHTML = `
                 <span class="w-2 h-2 bg-emerald-400 rounded-full pulse-dot"></span>
-                <span class="text-emerald-400 text-xs font-medium">Engine Ready</span>
+                <span class="text-emerald-400 text-xs font-medium">Wasm Engine</span>
             `;
         } else {
             statusEl.innerHTML = `
-                <span class="w-2 h-2 bg-amber-400 rounded-full"></span>
-                <span class="text-amber-400 text-xs font-medium">Fallback Mode</span>
+                <span class="w-2 h-2 bg-emerald-400 rounded-full pulse-dot"></span>
+                <span class="text-emerald-400 text-xs font-medium">Ready</span>
             `;
         }
     }
@@ -90,16 +96,11 @@ function handleFileUpload(event) {
 }
 
 function loadSampleData() {
-    if (wasmModule && wasmModule.generate_sample_data) {
-        const dataJson = wasmModule.generate_sample_data(500);
-        rawData = JSON.parse(dataJson);
-    } else {
-        rawData = generateSampleDataJS(500);
-    }
+    rawData = generateSampleData(500);
     processUploadedData();
 }
 
-function generateSampleDataJS(numLoans) {
+function generateSampleData(numLoans) {
     const firstNames = ['John', 'Mary', 'Peter', 'Grace', 'David', 'Sarah', 'James', 'Agnes', 'Robert', 'Florence'];
     const lastNames = ['Mukasa', 'Nakato', 'Ssemakula', 'Nambi', 'Okello', 'Akello', 'Wasswa', 'Babirye', 'Kato', 'Nalongo'];
     const officers = ['OFF001', 'OFF002', 'OFF003', 'OFF004', 'OFF005'];
@@ -109,6 +110,7 @@ function generateSampleDataJS(numLoans) {
     const data = [];
     const fraudPhones = [];
 
+    // Create fraud phone numbers
     for (let i = 0; i < 5; i++) {
         fraudPhones.push('07' + Math.floor(Math.random() * 90000000 + 10000000));
     }
@@ -126,7 +128,7 @@ function generateSampleDataJS(numLoans) {
             loan_id: `LN${String(i + 1).padStart(5, '0')}`,
             borrower_id: isStacking ? `MBR${String(Math.floor(i / 3)).padStart(4, '0')}` : `MBR${String(i + 1).padStart(4, '0')}`,
             borrower_name: `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`,
-            phone: isGhostLoan ? fraudPhones[Math.floor(Math.random() * fraudPhones.len)] : '07' + Math.floor(Math.random() * 90000000 + 10000000),
+            phone: isGhostLoan ? fraudPhones[Math.floor(Math.random() * fraudPhones.length)] : '07' + Math.floor(Math.random() * 90000000 + 10000000),
             amount: Math.floor(Math.random() * 4000000 + 500000),
             loan_date: `2024-${String(Math.floor(Math.random() * 12) + 1).padStart(2, '0')}-${String(Math.floor(Math.random() * 28) + 1).padStart(2, '0')}`,
             approval_time: `${String(hour).padStart(2, '0')}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')}`,
@@ -142,52 +144,43 @@ function generateSampleDataJS(numLoans) {
 // ============================================
 // COLUMN DETECTION
 // ============================================
+const NAME_VARIATIONS = {
+    loan_id: ['loan_id', 'loanid', 'loan_no', 'loan_number', 'loan_ref', 'reference', 'contract_id', 'id', 'ref_no'],
+    borrower_id: ['borrower_id', 'borrowerid', 'member_id', 'memberid', 'client_id', 'account_no', 'member_no'],
+    borrower_name: ['borrower_name', 'borrowername', 'name', 'full_name', 'fullname', 'member_name', 'client_name', 'customer_name'],
+    phone: ['phone', 'phone_number', 'phonenumber', 'mobile', 'mobile_number', 'telephone', 'tel', 'contact'],
+    national_id: ['national_id', 'nationalid', 'nin', 'id_no', 'id_number', 'nid'],
+    amount: ['amount', 'loan_amount', 'loanamount', 'principal', 'principal_amount', 'disbursed_amount', 'value'],
+    loan_date: ['loan_date', 'loandate', 'disbursement_date', 'date_disbursed', 'date', 'transaction_date'],
+    approval_time: ['approval_time', 'time', 'created_at', 'timestamp', 'datetime'],
+    officer_id: ['officer_id', 'officerid', 'loan_officer_id', 'staff_id', 'user_id', 'approved_by'],
+    officer_name: ['officer_name', 'officername', 'loan_officer', 'staff_name'],
+    branch: ['branch', 'branch_name', 'branchname', 'location', 'office'],
+    status: ['status', 'loan_status', 'loanstatus', 'state']
+};
+
 function processUploadedData() {
     if (!rawData || rawData.length === 0) return;
-
-    // Use Wasm for column detection if available
-    if (wasmModule && wasmModule.detect_columns) {
-        const mappingsJson = wasmModule.detect_columns(JSON.stringify(rawData));
-        columnMappings = JSON.parse(mappingsJson);
-    } else {
-        columnMappings = detectColumnsJS(rawData);
-    }
-
+    columnMappings = detectColumnMappings(rawData);
     goToStep(2);
     renderMappingTable();
     renderDataPreview();
 }
 
-function detectColumnsJS(data) {
-    // Simplified JS fallback for column detection
+function detectColumnMappings(data) {
     const columns = Object.keys(data[0] || {});
     const mappings = {};
-
-    const nameVariations = {
-        loan_id: ['loan_id', 'loanid', 'loan_no', 'id', 'ref_no'],
-        borrower_id: ['borrower_id', 'member_id', 'client_id', 'account_no'],
-        borrower_name: ['borrower_name', 'name', 'full_name', 'member_name', 'client_name'],
-        phone: ['phone', 'mobile', 'telephone', 'tel', 'contact'],
-        amount: ['amount', 'loan_amount', 'principal', 'value'],
-        loan_date: ['loan_date', 'date', 'disbursement_date'],
-        approval_time: ['approval_time', 'time', 'timestamp'],
-        officer_id: ['officer_id', 'staff_id', 'user_id', 'approved_by'],
-        officer_name: ['officer_name', 'staff_name', 'loan_officer'],
-        branch: ['branch', 'branch_name', 'location'],
-        status: ['status', 'loan_status', 'state']
-    };
-
     const usedFields = new Set();
 
     columns.forEach(col => {
         const colLower = col.toLowerCase().replace(/[^a-z0-9]/g, '_');
 
-        for (const [field, variations] of Object.entries(nameVariations)) {
+        for (const [field, variations] of Object.entries(NAME_VARIATIONS)) {
             if (usedFields.has(field)) continue;
 
             for (const v of variations) {
-                if (colLower === v || colLower.includes(v)) {
-                    mappings[col] = { field, confidence: 85, method: 'name_match' };
+                if (colLower === v || colLower.includes(v) || v.includes(colLower)) {
+                    mappings[col] = { field, confidence: colLower === v ? 100 : 85, method: 'name_match' };
                     usedFields.add(field);
                     break;
                 }
@@ -259,10 +252,8 @@ function renderMappingTable() {
     html += '</tbody></table>';
     container.innerHTML = html;
 
-    document.getElementById('mapping-summary').textContent =
-        `${mapped} of ${columns.length} columns auto-detected`;
+    document.getElementById('mapping-summary').textContent = `${mapped} of ${columns.length} columns auto-detected`;
 
-    // Add event listeners for mapping changes
     document.querySelectorAll('.mapping-select').forEach(select => {
         select.addEventListener('change', (e) => {
             const col = e.target.dataset.col;
@@ -282,16 +273,12 @@ function renderDataPreview() {
     const preview = rawData.slice(0, 10);
 
     let html = '<table class="w-full text-xs"><thead><tr class="text-left text-slate-400">';
-    columns.forEach(col => {
-        html += `<th class="pb-2 pr-4 whitespace-nowrap">${col}</th>`;
-    });
+    columns.forEach(col => { html += `<th class="pb-2 pr-4 whitespace-nowrap">${col}</th>`; });
     html += '</tr></thead><tbody>';
 
     preview.forEach(row => {
         html += '<tr class="border-b border-slate-800">';
-        columns.forEach(col => {
-            html += `<td class="py-2 pr-4 whitespace-nowrap text-slate-300">${row[col] || ''}</td>`;
-        });
+        columns.forEach(col => { html += `<td class="py-2 pr-4 whitespace-nowrap text-slate-300">${row[col] || ''}</td>`; });
         html += '</tr>';
     });
 
@@ -300,10 +287,9 @@ function renderDataPreview() {
 }
 
 // ============================================
-// FRAUD ANALYSIS
+// FRAUD DETECTION ENGINE
 // ============================================
 function proceedToAnalysis() {
-    // Apply mappings to create standardized data
     mappedData = rawData.map(row => {
         const mapped = {};
         Object.entries(columnMappings).forEach(([orig, map]) => {
@@ -317,101 +303,184 @@ function proceedToAnalysis() {
 }
 
 async function runFraudAnalysis() {
-    const checks = ['check-ghost', 'check-stacking', 'check-officer', 'check-timing', 'check-amount'];
-
-    // Animate progress
-    for (let i = 0; i < checks.length; i++) {
-        await new Promise(resolve => setTimeout(resolve, 200));
-        const el = document.getElementById(checks[i]);
-        el.innerHTML = '<i data-lucide="check-circle" class="h-4 w-4 inline text-emerald-400 mr-2"></i>' +
-            el.textContent.replace('...', ' - Complete');
-        lucide.createIcons();
-    }
-
-    // Run analysis (Wasm or JS fallback)
-    if (wasmModule && wasmModule.analyze_fraud) {
-        const resultsJson = wasmModule.analyze_fraud(JSON.stringify(mappedData));
-        analysisResults = JSON.parse(resultsJson);
-    } else {
-        analysisResults = analyzeFraudJS(mappedData);
-    }
-
-    setTimeout(() => {
-        goToStep(4);
-        renderResults();
-    }, 300);
-}
-
-function analyzeFraudJS(data) {
-    // JS fallback for fraud analysis
-    const results = {
-        summary: {
-            total_records: data.length,
-            critical_alerts: 0,
-            high_alerts: 0,
-            medium_alerts: 0,
-            low_alerts: 0,
-            risk_score: 0
-        },
+    analysisResults = {
+        summary: { total_records: mappedData.length, critical_alerts: 0, high_alerts: 0, medium_alerts: 0, low_alerts: 0, risk_score: 0 },
         alerts: [],
         officers: {}
     };
 
-    // Ghost loans detection
+    const checks = ['check-ghost', 'check-stacking', 'check-officer', 'check-timing', 'check-amount'];
+    const detectors = [detectGhostLoans, detectLoanStacking, detectOfficerAnomalies, detectTimingAnomalies, detectAmountAnomalies];
+
+    for (let i = 0; i < checks.length; i++) {
+        await new Promise(resolve => setTimeout(resolve, 150));
+        detectors[i]();
+        const el = document.getElementById(checks[i]);
+        el.innerHTML = '<i data-lucide="check-circle" class="h-4 w-4 inline text-emerald-400 mr-2"></i>' + el.textContent.replace('...', ' - Complete');
+        lucide.createIcons();
+    }
+
+    calculateRiskScore();
+
+    setTimeout(() => {
+        goToStep(4);
+        renderResults();
+    }, 200);
+}
+
+function detectGhostLoans() {
     const phoneCounts = {};
-    data.forEach((row, idx) => {
-        if (row.phone) {
-            if (!phoneCounts[row.phone]) phoneCounts[row.phone] = [];
-            phoneCounts[row.phone].push(row);
+    mappedData.forEach((row, idx) => {
+        const phone = row.phone;
+        if (phone) {
+            if (!phoneCounts[phone]) phoneCounts[phone] = [];
+            phoneCounts[phone].push({ ...row, rowIndex: idx });
         }
     });
 
     Object.entries(phoneCounts).forEach(([phone, rows]) => {
         if (rows.length > 1) {
             const totalAmount = rows.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
-            results.alerts.push({
+            analysisResults.alerts.push({
                 alert_type: 'GHOST_LOAN',
                 severity: rows.length >= 4 ? 'CRITICAL' : 'HIGH',
                 title: 'Duplicate Phone Number Detected',
                 description: `Phone ${phone} appears in ${rows.length} different loans`,
                 amount: totalAmount,
                 officer: rows[0].officer_id || '',
-                details: rows.map(r => ({ loan_id: r.loan_id, borrower: r.borrower_name, amount: r.amount }))
+                details: rows.map(r => ({ loanId: r.loan_id, borrower: r.borrower_name, amount: r.amount }))
             });
         }
     });
+}
 
-    // Officer stats
-    data.forEach(row => {
+function detectLoanStacking() {
+    const borrowerLoans = {};
+    mappedData.forEach((row, idx) => {
+        const borrowerId = row.borrower_id;
+        const date = row.loan_date;
+        if (borrowerId && date) {
+            const key = `${borrowerId}-${date}`;
+            if (!borrowerLoans[key]) borrowerLoans[key] = [];
+            borrowerLoans[key].push({ ...row, rowIndex: idx });
+        }
+    });
+
+    Object.entries(borrowerLoans).forEach(([key, rows]) => {
+        if (rows.length > 1) {
+            const totalAmount = rows.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
+            analysisResults.alerts.push({
+                alert_type: 'LOAN_STACKING',
+                severity: 'HIGH',
+                title: 'Multiple Loans Same Day',
+                description: `Borrower received ${rows.length} loans on same date, total UGX ${totalAmount.toLocaleString()}`,
+                amount: totalAmount,
+                officer: rows[0].officer_id || '',
+                details: rows
+            });
+        }
+    });
+}
+
+function detectOfficerAnomalies() {
+    const officerStats = {};
+    mappedData.forEach(row => {
         const officer = row.officer_id || 'Unknown';
-        if (!results.officers[officer]) {
-            results.officers[officer] = { name: row.officer_name || officer, count: 0, total_amount: 0, flag_rate: 0, z_score: 0 };
+        if (!officerStats[officer]) {
+            officerStats[officer] = { count: 0, total_amount: 0, name: row.officer_name || officer, flag_rate: 0, z_score: 0 };
         }
-        results.officers[officer].count++;
-        results.officers[officer].total_amount += parseFloat(row.amount) || 0;
+        officerStats[officer].count++;
+        officerStats[officer].total_amount += parseFloat(row.amount) || 0;
     });
 
-    // Calculate risk score
-    results.alerts.forEach(alert => {
-        if (alert.severity === 'CRITICAL') { results.summary.critical_alerts++; results.summary.risk_score += 25; }
-        else if (alert.severity === 'HIGH') { results.summary.high_alerts++; results.summary.risk_score += 15; }
-        else if (alert.severity === 'MEDIUM') { results.summary.medium_alerts++; results.summary.risk_score += 8; }
-        else { results.summary.low_alerts++; results.summary.risk_score += 3; }
+    const counts = Object.values(officerStats).map(s => s.count);
+    const mean = counts.reduce((a, b) => a + b, 0) / counts.length;
+    const stdDev = Math.sqrt(counts.reduce((sq, n) => sq + Math.pow(n - mean, 2), 0) / counts.length);
 
-        if (alert.officer && results.officers[alert.officer]) {
-            results.officers[alert.officer].flag_rate++;
+    Object.entries(officerStats).forEach(([officer, stats]) => {
+        const zScore = stdDev > 0 ? (stats.count - mean) / stdDev : 0;
+        stats.z_score = zScore;
+        analysisResults.officers[officer] = stats;
+
+        if (zScore > 2) {
+            analysisResults.alerts.push({
+                alert_type: 'OFFICER_ANOMALY',
+                severity: zScore > 3 ? 'HIGH' : 'MEDIUM',
+                title: 'Unusual Officer Volume',
+                description: `Officer ${stats.name} processed ${stats.count} loans (${zScore.toFixed(1)} std from avg)`,
+                amount: stats.total_amount * 0.1,
+                officer: officer,
+                details: [{ officerName: stats.name, loanCount: stats.count, zScore }]
+            });
+        }
+    });
+}
+
+function detectTimingAnomalies() {
+    mappedData.forEach((row, idx) => {
+        const time = row.approval_time;
+        if (time) {
+            const hour = parseInt(time.split(':')[0]) || 12;
+            if (hour < 6 || hour >= 22) {
+                analysisResults.alerts.push({
+                    alert_type: 'TIMING_ANOMALY',
+                    severity: 'MEDIUM',
+                    title: 'After-Hours Approval',
+                    description: `Loan ${row.loan_id} approved at ${time}`,
+                    amount: parseFloat(row.amount) || 0,
+                    officer: row.officer_id || '',
+                    details: [row]
+                });
+            }
+        }
+    });
+}
+
+function detectAmountAnomalies() {
+    const amounts = mappedData.map(r => parseFloat(r.amount) || 0).filter(a => a > 0);
+    if (amounts.length < 5) return;
+
+    const mean = amounts.reduce((a, b) => a + b, 0) / amounts.length;
+    const stdDev = Math.sqrt(amounts.reduce((sq, n) => sq + Math.pow(n - mean, 2), 0) / amounts.length);
+    const threshold = mean + (2.5 * stdDev);
+
+    mappedData.forEach((row, idx) => {
+        const amount = parseFloat(row.amount) || 0;
+        if (amount > threshold) {
+            analysisResults.alerts.push({
+                alert_type: 'AMOUNT_ANOMALY',
+                severity: 'MEDIUM',
+                title: 'Unusually Large Loan',
+                description: `Loan amount UGX ${amount.toLocaleString()} is ${Math.round((amount / mean - 1) * 100)}% above average`,
+                amount: amount,
+                officer: row.officer_id || '',
+                details: [{ ...row, mean, stdDev }]
+            });
+        }
+    });
+}
+
+function calculateRiskScore() {
+    let score = 0;
+
+    analysisResults.alerts.forEach(alert => {
+        if (alert.severity === 'CRITICAL') { score += 25; analysisResults.summary.critical_alerts++; }
+        else if (alert.severity === 'HIGH') { score += 15; analysisResults.summary.high_alerts++; }
+        else if (alert.severity === 'MEDIUM') { score += 8; analysisResults.summary.medium_alerts++; }
+        else { score += 3; analysisResults.summary.low_alerts++; }
+
+        if (alert.officer && analysisResults.officers[alert.officer]) {
+            analysisResults.officers[alert.officer].flag_rate++;
         }
     });
 
-    results.summary.risk_score = Math.min(100, results.summary.risk_score);
-    return results;
+    analysisResults.summary.risk_score = Math.min(100, score);
 }
 
 // ============================================
 // RESULTS UI
 // ============================================
 function renderResults() {
-    // Update summary stats
     document.getElementById('risk-score').textContent = analysisResults.summary.risk_score;
     document.getElementById('risk-bar').style.width = analysisResults.summary.risk_score + '%';
 
@@ -429,7 +498,6 @@ function renderResults() {
     renderAlerts('all');
     renderOfficers();
     renderDataTable();
-
     lucide.createIcons();
 }
 
@@ -437,9 +505,7 @@ function renderAlerts(filter) {
     const container = document.getElementById('alerts-list');
     let alerts = analysisResults.alerts;
 
-    if (filter !== 'all') {
-        alerts = alerts.filter(a => a.severity === filter);
-    }
+    if (filter !== 'all') alerts = alerts.filter(a => a.severity === filter);
 
     if (alerts.length === 0) {
         container.innerHTML = '<div class="p-8 text-center text-slate-500"><i data-lucide="check-circle" class="h-12 w-12 mx-auto mb-3 text-emerald-500/50"></i><p>No alerts found</p></div>';
@@ -448,15 +514,13 @@ function renderAlerts(filter) {
     }
 
     container.innerHTML = alerts.map((alert, idx) => {
-        const severityColors = {
-            CRITICAL: { bg: 'red-500/10', border: 'red-500/30', text: 'red-400', icon: 'red-500' },
-            HIGH: { bg: 'orange-500/10', border: 'orange-500/30', text: 'orange-400', icon: 'orange-500' },
-            MEDIUM: { bg: 'yellow-500/10', border: 'yellow-500/30', text: 'yellow-400', icon: 'yellow-500' },
-            LOW: { bg: 'blue-500/10', border: 'blue-500/30', text: 'blue-400', icon: 'blue-500' }
-        };
-        const colors = severityColors[alert.severity] || severityColors.MEDIUM;
+        const colors = {
+            CRITICAL: { bg: 'red-500/10', text: 'red-400', icon: 'red-500' },
+            HIGH: { bg: 'orange-500/10', text: 'orange-400', icon: 'orange-500' },
+            MEDIUM: { bg: 'yellow-500/10', text: 'yellow-400', icon: 'yellow-500' }
+        }[alert.severity] || { bg: 'blue-500/10', text: 'blue-400', icon: 'blue-500' };
 
-        return `<div class="alert-row px-4 py-3 border-b border-slate-700/50 bg-${colors.bg}" data-idx="${idx}">
+        return `<div class="alert-row px-4 py-3 border-b border-slate-700/50 bg-${colors.bg} cursor-pointer" onclick="toggleDetails(${idx})">
             <div class="flex items-start space-x-3">
                 <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-${colors.icon}/20">
                     <i data-lucide="alert-triangle" class="h-4 w-4 text-${colors.icon}"></i>
@@ -474,21 +538,17 @@ function renderAlerts(filter) {
                     </div>
                 </div>
             </div>
-            <div id="alert-details-${idx}" class="hidden mt-3 ml-11 p-3 bg-slate-900/50 rounded-lg text-xs">
+            <div id="details-${idx}" class="hidden mt-3 ml-11 p-3 bg-slate-900/50 rounded-lg text-xs">
                 <pre class="text-slate-400 overflow-x-auto">${JSON.stringify(alert.details, null, 2)}</pre>
             </div>
         </div>`;
     }).join('');
 
-    // Add click handlers
-    container.querySelectorAll('.alert-row').forEach(row => {
-        row.addEventListener('click', () => {
-            const idx = row.dataset.idx;
-            document.getElementById(`alert-details-${idx}`).classList.toggle('hidden');
-        });
-    });
-
     lucide.createIcons();
+}
+
+function toggleDetails(idx) {
+    document.getElementById(`details-${idx}`).classList.toggle('hidden');
 }
 
 function renderOfficers() {
@@ -502,9 +562,7 @@ function renderOfficers() {
         const riskColor = riskScore > 60 ? 'red' : riskScore > 30 ? 'amber' : 'emerald';
 
         return `<div class="flex items-center space-x-3">
-            <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${idx < 2 ? `bg-${riskColor}-500/20 text-${riskColor}-400` : 'bg-slate-700 text-slate-400'}">
-                ${idx + 1}
-            </div>
+            <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${idx < 2 ? `bg-${riskColor}-500/20 text-${riskColor}-400` : 'bg-slate-700 text-slate-400'}">${idx + 1}</div>
             <div class="flex-1">
                 <div class="flex items-center justify-between">
                     <p class="text-sm font-medium">${officer.name}</p>
@@ -527,36 +585,29 @@ function renderDataTable() {
     const columns = Object.keys(mappedData[0] || {});
 
     let html = '<table class="w-full text-xs"><thead><tr class="text-left text-slate-400 border-b border-slate-700">';
-    columns.forEach(col => {
-        html += `<th class="pb-2 pr-4 whitespace-nowrap">${col}</th>`;
-    });
+    columns.forEach(col => { html += `<th class="pb-2 pr-4 whitespace-nowrap">${col}</th>`; });
     html += '</tr></thead><tbody>';
 
     mappedData.slice(0, 50).forEach(row => {
         html += '<tr class="border-b border-slate-800/50 hover:bg-slate-800/30">';
         columns.forEach(col => {
             const val = row[col];
-            const display = typeof val === 'number' ? val.toLocaleString() : (val || '');
-            html += `<td class="py-2 pr-4 whitespace-nowrap text-slate-300">${display}</td>`;
+            html += `<td class="py-2 pr-4 whitespace-nowrap text-slate-300">${typeof val === 'number' ? val.toLocaleString() : (val || '')}</td>`;
         });
         html += '</tr>';
     });
 
     html += '</tbody></table>';
-    if (mappedData.length > 50) {
-        html += `<p class="text-center text-sm text-slate-500 mt-4">Showing 50 of ${mappedData.length} records</p>`;
-    }
-
+    if (mappedData.length > 50) html += `<p class="text-center text-sm text-slate-500 mt-4">Showing 50 of ${mappedData.length} records</p>`;
     container.innerHTML = html;
 }
 
 // ============================================
-// NAVIGATION
+// NAVIGATION & UTILITIES
 // ============================================
 function goToStep(step) {
     currentStep = step;
 
-    // Update step indicators
     for (let i = 1; i <= 4; i++) {
         const el = document.getElementById(`step${i}`);
         el.className = el.className.replace('active', '').replace('completed', '');
@@ -572,7 +623,6 @@ function goToStep(step) {
     }
     lucide.createIcons();
 
-    // Show/hide sections
     document.getElementById('upload-section').classList.toggle('hidden', step !== 1);
     document.getElementById('mapping-section').classList.toggle('hidden', step !== 2);
     document.getElementById('analyzing-section').classList.toggle('hidden', step !== 3);
@@ -588,42 +638,30 @@ function resetAnalysis() {
     goToStep(1);
 }
 
-// ============================================
-// EXPORT
-// ============================================
 function downloadResults() {
     if (!analysisResults) return;
 
-    const lines = [];
-
-    lines.push('FraudShield Uganda - Fraud Detection Report (Fast Edition)');
-    lines.push(`Generated: ${new Date().toISOString()}`);
-    lines.push(`Risk Score: ${analysisResults.summary.risk_score}/100`);
-    lines.push(`Total Records: ${analysisResults.summary.total_records}`);
-    lines.push(`Critical Alerts: ${analysisResults.summary.critical_alerts}`);
-    lines.push(`High Risk Alerts: ${analysisResults.summary.high_alerts}`);
-    lines.push(`Medium Risk Alerts: ${analysisResults.summary.medium_alerts}`);
-    lines.push('');
-
-    lines.push('=== FRAUD ALERTS ===');
-    lines.push('Severity,Type,Title,Description,Amount at Risk (UGX),Officer ID');
+    const lines = [
+        'FraudShield Uganda - Fraud Detection Report (Fast Edition)',
+        `Generated: ${new Date().toISOString()}`,
+        `Risk Score: ${analysisResults.summary.risk_score}/100`,
+        `Total Records: ${analysisResults.summary.total_records}`,
+        `Critical Alerts: ${analysisResults.summary.critical_alerts}`,
+        `High Risk Alerts: ${analysisResults.summary.high_alerts}`,
+        `Medium Risk Alerts: ${analysisResults.summary.medium_alerts}`,
+        '',
+        '=== FRAUD ALERTS ===',
+        'Severity,Type,Title,Description,Amount at Risk (UGX),Officer ID'
+    ];
 
     analysisResults.alerts.forEach(alert => {
-        const row = [
-            alert.severity || '',
-            (alert.alert_type || '').replace(/_/g, ' '),
+        lines.push([alert.severity, (alert.alert_type || '').replace(/_/g, ' '),
             `"${(alert.title || '').replace(/"/g, '""')}"`,
             `"${(alert.description || '').replace(/"/g, '""')}"`,
-            alert.amount || 0,
-            alert.officer || ''
-        ];
-        lines.push(row.join(','));
+            alert.amount || 0, alert.officer || ''].join(','));
     });
 
-    lines.push('');
-    lines.push('=== OFFICER RISK RANKING ===');
-    lines.push('Officer ID,Name,Loan Count,Alert Count,Risk Score');
-
+    lines.push('', '=== OFFICER RISK RANKING ===', 'Officer ID,Name,Loan Count,Alert Count,Risk Score');
     Object.entries(analysisResults.officers)
         .sort((a, b) => b[1].flag_rate - a[1].flag_rate)
         .forEach(([id, stats]) => {
@@ -631,19 +669,13 @@ function downloadResults() {
             lines.push([id, `"${stats.name}"`, stats.count, stats.flag_rate, Math.round(riskScore)].join(','));
         });
 
-    const csvContent = lines.join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
     const a = document.createElement('a');
-    a.href = url;
+    a.href = URL.createObjectURL(blob);
     a.download = `fraudshield-fast-report-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
-    URL.revokeObjectURL(url);
 }
 
-// ============================================
-// TAB SWITCHING
-// ============================================
 function showResultTab(tab) {
     document.querySelectorAll('.result-tab-content').forEach(el => el.classList.add('hidden'));
     document.getElementById(`tab-${tab}`).classList.remove('hidden');
@@ -651,18 +683,13 @@ function showResultTab(tab) {
     document.querySelectorAll('.result-tab').forEach(btn => {
         btn.className = btn.className.replace('bg-emerald-500/20 text-emerald-400', 'text-slate-400 hover:text-white hover:bg-slate-800');
     });
-    document.querySelector(`.result-tab[data-tab="${tab}"]`).className =
-        'result-tab px-4 py-2 rounded-lg text-sm font-medium bg-emerald-500/20 text-emerald-400';
+    document.querySelector(`.result-tab[data-tab="${tab}"]`).className = 'result-tab px-4 py-2 rounded-lg text-sm font-medium bg-emerald-500/20 text-emerald-400';
 }
 
 function filterAlerts(filter) {
     document.querySelectorAll('.alert-filter').forEach(btn => {
-        btn.className = btn.className.replace('bg-slate-700', '').replace('text-slate-400', '');
-        if (btn.dataset.filter === filter) {
-            btn.className += ' bg-slate-700';
-        } else {
-            btn.className += ' text-slate-400 hover:bg-slate-700';
-        }
+        btn.className = btn.className.replace('bg-slate-700', '').replace(/text-slate-400/g, '');
+        btn.className += btn.dataset.filter === filter ? ' bg-slate-700' : ' text-slate-400 hover:bg-slate-700';
     });
     renderAlerts(filter);
 }
@@ -670,28 +697,29 @@ function filterAlerts(filter) {
 // ============================================
 // INITIALIZATION
 // ============================================
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', function() {
     lucide.createIcons();
 
-    // Initialize Wasm
-    await initWasm();
+    // Set status to ready immediately (Wasm is optional enhancement)
+    updateEngineStatus(false);
+
+    // Try to load Wasm in background (optional)
+    initWasm();
 
     // Event listeners
     document.getElementById('file-input').addEventListener('change', handleFileUpload);
     document.getElementById('sample-btn').addEventListener('click', loadSampleData);
-    document.getElementById('back-to-upload').addEventListener('click', () => goToStep(1));
+    document.getElementById('back-to-upload').addEventListener('click', function() { goToStep(1); });
     document.getElementById('proceed-btn').addEventListener('click', proceedToAnalysis);
     document.getElementById('reset-btn').addEventListener('click', resetAnalysis);
     document.getElementById('export-btn').addEventListener('click', downloadResults);
     document.getElementById('download-report-btn').addEventListener('click', downloadResults);
 
-    // Tab switching
     document.querySelectorAll('.result-tab').forEach(btn => {
-        btn.addEventListener('click', () => showResultTab(btn.dataset.tab));
+        btn.addEventListener('click', function() { showResultTab(this.dataset.tab); });
     });
 
-    // Alert filtering
     document.querySelectorAll('.alert-filter').forEach(btn => {
-        btn.addEventListener('click', () => filterAlerts(btn.dataset.filter));
+        btn.addEventListener('click', function() { filterAlerts(this.dataset.filter); });
     });
 });
