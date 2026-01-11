@@ -96,7 +96,18 @@ function handleFileUpload(event) {
 }
 
 function loadSampleData() {
-    rawData = generateSampleData(500);
+    // Use Wasm if available, otherwise JS fallback
+    if (wasmModule && wasmModule.generate_sample_data) {
+        try {
+            const dataJson = wasmModule.generate_sample_data(500);
+            rawData = JSON.parse(dataJson);
+        } catch (e) {
+            console.warn('Wasm sample data failed, using JS fallback');
+            rawData = generateSampleData(500);
+        }
+    } else {
+        rawData = generateSampleData(500);
+    }
     processUploadedData();
 }
 
@@ -161,7 +172,20 @@ const NAME_VARIATIONS = {
 
 function processUploadedData() {
     if (!rawData || rawData.length === 0) return;
-    columnMappings = detectColumnMappings(rawData);
+
+    // Use Wasm for column detection if available
+    if (wasmModule && wasmModule.detect_columns) {
+        try {
+            const mappingsJson = wasmModule.detect_columns(JSON.stringify(rawData));
+            columnMappings = JSON.parse(mappingsJson);
+        } catch (e) {
+            console.warn('Wasm column detection failed, using JS fallback');
+            columnMappings = detectColumnMappings(rawData);
+        }
+    } else {
+        columnMappings = detectColumnMappings(rawData);
+    }
+
     goToStep(2);
     renderMappingTable();
     renderDataPreview();
@@ -303,13 +327,40 @@ function proceedToAnalysis() {
 }
 
 async function runFraudAnalysis() {
+    const checks = ['check-ghost', 'check-stacking', 'check-officer', 'check-timing', 'check-amount'];
+
+    // Use Wasm for fraud analysis if available
+    if (wasmModule && wasmModule.analyze_fraud) {
+        try {
+            // Animate progress
+            for (let i = 0; i < checks.length; i++) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                const el = document.getElementById(checks[i]);
+                el.innerHTML = '<i data-lucide="check-circle" class="h-4 w-4 inline text-emerald-400 mr-2"></i>' + el.textContent.replace('...', ' - Complete');
+                lucide.createIcons();
+            }
+
+            // Run Wasm analysis
+            const resultsJson = wasmModule.analyze_fraud(JSON.stringify(mappedData));
+            analysisResults = JSON.parse(resultsJson);
+
+            setTimeout(() => {
+                goToStep(4);
+                renderResults();
+            }, 200);
+            return;
+        } catch (e) {
+            console.warn('Wasm analysis failed, using JS fallback:', e);
+        }
+    }
+
+    // JS fallback
     analysisResults = {
         summary: { total_records: mappedData.length, critical_alerts: 0, high_alerts: 0, medium_alerts: 0, low_alerts: 0, risk_score: 0 },
         alerts: [],
         officers: {}
     };
 
-    const checks = ['check-ghost', 'check-stacking', 'check-officer', 'check-timing', 'check-amount'];
     const detectors = [detectGhostLoans, detectLoanStacking, detectOfficerAnomalies, detectTimingAnomalies, detectAmountAnomalies];
 
     for (let i = 0; i < checks.length; i++) {
