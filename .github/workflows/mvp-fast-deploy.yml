@@ -1,0 +1,125 @@
+name: Build & Deploy MVP-Fast (Wasm)
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'mvp-fast/**'
+      - '.github/workflows/mvp-fast-deploy.yml'
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'mvp-fast/**'
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build Wasm Module
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache Cargo dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            mvp-fast/target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('mvp-fast/Cargo.lock', 'mvp-fast/Cargo.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Install wasm-pack
+        run: |
+          if ! command -v wasm-pack &> /dev/null; then
+            curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+          fi
+
+      - name: Build Wasm module
+        working-directory: mvp-fast
+        run: wasm-pack build --target web --out-dir www/pkg --release
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mvp-fast-wasm
+          path: mvp-fast/www/
+          retention-days: 30
+
+  deploy-vercel:
+    name: Deploy to Vercel
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download Wasm artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: mvp-fast-wasm
+          path: mvp-fast/www/
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel
+
+      - name: Deploy to Vercel
+        working-directory: mvp-fast
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          if [ -n "$VERCEL_TOKEN" ]; then
+            vercel deploy --prod --token=$VERCEL_TOKEN
+          else
+            echo "Vercel secrets not configured. Skipping deployment."
+            echo "To enable deployment, add these secrets to your repository:"
+            echo "  - VERCEL_TOKEN"
+            echo "  - VERCEL_ORG_ID"
+            echo "  - VERCEL_PROJECT_ID"
+          fi
+
+  deploy-pages:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+
+    steps:
+      - name: Download Wasm artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: mvp-fast-wasm
+          path: ./mvp-fast-www/
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload to GitHub Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./mvp-fast-www/
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
