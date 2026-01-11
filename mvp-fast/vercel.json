@@ -1,17 +1,4 @@
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "www/**",
-      "use": "@vercel/static"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/www/$1"
-    }
-  ],
   "headers": [
     {
       "source": "/(.*)",
@@ -27,7 +14,7 @@
       ]
     },
     {
-      "source": "/pkg/(.*).wasm",
+      "source": "/(.*)\\.wasm",
       "headers": [
         {
           "key": "Content-Type",
