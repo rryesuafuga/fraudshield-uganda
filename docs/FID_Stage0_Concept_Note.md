@@ -1,12 +1,19 @@
 # Concept Note — Fund for Innovation in Development (FID)
 
 **Stage requested:** Stage 0 / Preparation grant (up to €50,000)
+
 **Project title:** FedFraudShield — Privacy-preserving, collaborative fraud detection to protect the savings of Uganda's SACCO and microfinance members
+
 **Country:** Uganda (ODA-eligible, OECD DAC list)
+
 **Applicant:** FraudShield Uganda *(legal entity name and registration number to be inserted)*
+
 **Lead:** Raymond R. Wayesu, Founder & Lead Data Scientist — raymondrwayesu@gmail.com · +256 784 902 753
+
 **Proposed research partner:** *(to be confirmed — see Section 8)*
+
 **Duration:** 9 months
+
 **Date:** September 2026
 
 > **Status of this document:** working draft. Items marked `[TBC]` must be confirmed or replaced before submission. All FID rules (stage definitions, ceilings, eligibility) must be re-checked against the current call guide on fundinnovation.dev, which is updated periodically.
