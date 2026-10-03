@@ -2,7 +2,7 @@
 name = "fraudshield-wasm"
 version = "1.0.0"
 edition = "2021"
-authors = ["FraudShield Uganda <sseguya256@gmail.com>"]
+authors = ["FraudShield Uganda <raymondrwayesu@gmail.com>"]
 description = "High-performance fraud detection engine compiled to WebAssembly"
 
 [lib]

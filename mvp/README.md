@@ -98,7 +98,7 @@ Supported column name variations:
 
 ## Contact
 
-- **Email**: sseguya256@gmail.com
+- **Email**: raymondrwayesu@gmail.com
 - **Phone**: +256 784 902 753
 - **Website**: fraudshield-uganda.vercel.app
 

@@ -348,7 +348,7 @@ To add new models:
 
 ## Support
 
-- **Email**: sseguya256@gmail.com
+- **Email**: raymondrwayesu@gmail.com
 - **Website**: [fraudshield-uganda.vercel.app](https://fraudshield-uganda.vercel.app)
 
 ---

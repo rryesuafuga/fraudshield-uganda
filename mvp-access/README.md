@@ -303,7 +303,7 @@ MIT License - See LICENSE file for details.
 
 ## Contact
 
-- **Email**: sseguya256@gmail.com
+- **Email**: raymondrwayesu@gmail.com
 - **Phone**: +256 784 902 753
 - **Website**: https://fraudshield-uganda.vercel.app
 

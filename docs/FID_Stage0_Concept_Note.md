@@ -135,7 +135,7 @@ Stage 0 will produce actual cost per institution, cost per fraud case detected, 
 
 | Role | Who | Status |
 |---|---|---|
-| Lead / PI | Raymond R. Wayesu — MSc Statistics (Linköping University); Data Analytics Lead, Uganda Virus Research Institute; 10+ years in statistical analysis and ML; author of the FedFraudShield paper | Confirmed |
+| Lead / PI | Raymond R. Wayesu — MSc Statistics (Linköping University); Founder and Developer, Wayesu Community Research Organisation Ltd; 10+ years in statistical analysis and ML; author of the FedFraudShield paper | Confirmed |
 | Legal applicant | FraudShield Uganda `[TBC: registered entity type, registration no., bank account]` | **Must be confirmed — FID does not fund individuals** |
 | Research partner (evaluation design & Stage 2 evaluation) | Candidates: Makerere University Dept. of Computer Science (Azamuke, Katarahweire, Bainomugisha — cited in the paper); a J-PAL-affiliated economist; Innovations for Poverty Action (IPA) Uganda | `[TBC]` — to be secured under A5 |
 | Implementing partners | 3–5 SACCOs/MFIs `[TBC: names]` | Under discussion |

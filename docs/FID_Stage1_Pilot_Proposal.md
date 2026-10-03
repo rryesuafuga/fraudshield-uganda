@@ -193,7 +193,7 @@ A Stage 1 pilot must test the innovation in real conditions; FID also expects a 
 
 | Role | Who | Responsibilities | Status |
 |---|---|---|---|
-| Principal Investigator / project lead | Raymond R. Wayesu (MSc Statistics, Linköping; Data Analytics Lead, UVRI; author of FedFraudShield paper) | Overall delivery, detection engine, federation hub | Confirmed |
+| Principal Investigator / project lead | Raymond R. Wayesu (MSc Statistics, Linköping; Founder and Developer, Wayesu Community Research Organisation Ltd; author of FedFraudShield paper) | Overall delivery, detection engine, federation hub | Confirmed |
 | Legal applicant | FraudShield Uganda `[TBC: entity, registration, bank account, audited accounts if required]` | Grant holder | **Must confirm — FID does not fund individuals** |
 | Research partner (co-PI for evaluation) | `[TBC]` — candidates: Makerere University Dept. of Computer Science; a J-PAL-affiliated economist; IPA Uganda | Randomisation, pre-registration, evaluation analysis, publication | To be secured in Stage 0 |
 | Field team | 1 field coordinator (Kampala) + 4 regional field officers (0.5 FTE each) | Recruitment, onboarding, training, case-tracker collection | To recruit |

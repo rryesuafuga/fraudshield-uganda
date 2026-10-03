@@ -170,5 +170,5 @@ Proprietary - FraudShield Uganda
 ## Author
 
 Raymond R. Wayesu
-Data Analytics Lead, UVRI
-sseguya256@gmail.com
+Founder and Developer, Wayesu Community Research Organisation Ltd
+raymondrwayesu@gmail.com

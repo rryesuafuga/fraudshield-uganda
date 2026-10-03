@@ -840,7 +840,7 @@ export default function FraudShieldDemo() {
           <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-slate-500">
             <p>© 2025 FraudShield Uganda | Demo Version - For Demonstration Purposes Only</p>
             <div className="flex items-center gap-4">
-              <span>sseguya256@gmail.com</span>
+              <span>raymondrwayesu@gmail.com</span>
               <span>+256 784 902 753</span>
             </div>
           </div>

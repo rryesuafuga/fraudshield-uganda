@@ -129,6 +129,6 @@ If WebAssembly fails to load (unsupported browser, etc.), the app automatically 
 ## Contact
 
 FraudShield Uganda
-Email: sseguya256@gmail.com
+Email: raymondrwayesu@gmail.com
 Phone: +256 784 902 753
 

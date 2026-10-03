@@ -1,7 +1,7 @@
 [package]
 name = "fraudshield-wasm"
 version = "1.0.0"
-authors = ["FraudShield Uganda <sseguya256@gmail.com>"]
+authors = ["FraudShield Uganda <raymondrwayesu@gmail.com>"]
 edition = "2021"
 description = "WebAssembly-powered fraud detection for microfinance institutions"
 repository = "https://github.com/rryesuafuga/fraudshield-uganda"
